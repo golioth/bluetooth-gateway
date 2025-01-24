@@ -1,0 +1,11 @@
+boards:
+  - name: bsim_device
+    full_name: BabbleSim device
+    vendor: zephyr
+    socs:
+      - name: native
+        variants:
+          - name: empty
+          - name: handbrake
+          - name: pause_simu
+          - name: time_monitor
