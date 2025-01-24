@@ -5,4 +5,5 @@
 ```
 west init -m https://github.com/golioth/bluetooth-gateway.git
 west update
+west patch apply
 ```
