@@ -1,0 +1,30 @@
+manifest:
+  group-filter: [+babblesim]
+
+  projects:
+    - name: golioth
+      path: modules/lib/golioth-firmware-sdk
+      revision: v0.17.0
+      url: https://github.com/golioth/golioth-firmware-sdk.git
+      submodules: true
+      import:
+        file: west-zephyr.yml
+        name-allowlist:
+          - cmsis
+          - hal_nordic
+          - littlefs
+          - mbedtls
+          - mcuboot
+          - nrf_hw_models
+          - picolibc
+          - segger
+          - tinycrypt
+          - zcbor
+          - zephyr
+        path-allowlist:
+          - "tools/bsim"
+          - "tools/bsim/*"
+          - "tools/bsim/*/*"
+
+  self:
+    path: bluetooth-gateway
