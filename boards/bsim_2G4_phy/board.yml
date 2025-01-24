@@ -1,0 +1,6 @@
+boards:
+- name: bsim_2G4_phy
+  full_name: BabbleSim 2G4 Phy
+  vendor: zephyr
+  socs:
+  - name: native
