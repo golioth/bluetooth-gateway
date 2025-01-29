@@ -1,0 +1,8 @@
+patches:
+  - path: zephyr/0001-scripts-west_commands-Support-out-of-tree-runners.patch
+    sha256sum: 3a5807cb8631be6174fe09b21a50b079b46bd4ff149139e9f38c2604f1de4a8c
+    module: zephyr
+    author: Pieter De Gendt
+    email: pieter.degendt@basalte.be
+    date: 2024-12-19
+    apply-command: git am
