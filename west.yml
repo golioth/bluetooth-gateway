@@ -28,3 +28,4 @@ manifest:
 
   self:
     path: bluetooth-gateway
+    west-commands: scripts/west-commands.yml
