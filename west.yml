@@ -26,6 +26,11 @@ manifest:
           - "tools/bsim/*"
           - "tools/bsim/*/*"
 
+    - name: pouch
+      path: pouch
+      revision: c6e368ba0985d1ad10822c73986eb3f313180da2
+      url: git@github.com:golioth/pouch.git
+
   self:
     path: bluetooth-gateway
     west-commands: scripts/west-commands.yml
