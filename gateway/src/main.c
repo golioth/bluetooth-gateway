@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) 2025 Golioth, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <golioth/client.h>
+#include <golioth/gateway.h>
+#include <samples/common/sample_credentials.h>
+#include <samples/common/net_connect.h>
+
+#include "bt.h"
+#include "fifo.h"
+
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(main);
+
+#define SYNC_TIMEOUT_S 2
+
+struct golioth_client *client;
+
+#ifdef CONFIG_GATEWAY_CLOUD
+
+static K_SEM_DEFINE(connected, 0, 1);
+
+static void on_client_event(struct golioth_client *client,
+                            enum golioth_client_event event,
+                            void *arg)
+{
+    bool is_connected = (event == GOLIOTH_CLIENT_EVENT_CONNECTED);
+    if (is_connected)
+    {
+        k_sem_give(&connected);
+    }
+    LOG_INF("Golioth client %s", is_connected ? "connected" : "disconnected");
+}
+
+static void connect_to_cloud(void)
+{
+    const struct golioth_client_config *client_config = golioth_sample_credentials_get();
+
+    client = golioth_client_create(client_config);
+
+    golioth_client_register_event_callback(client, on_client_event, NULL);
+
+    LOG_INF("Waiting for network connection");
+    k_sem_take(&connected, K_FOREVER);
+}
+
+#else /* CONFIG_GATEWAY_CLOUD */
+
+static inline void connect_to_cloud(void) {}
+
+#endif /* CONFIG_GATEWAY_CLOUD */
+
+int main(void)
+{
+    struct pouch_fifo_item *item;
+    int err;
+
+    connect_to_cloud();
+
+    err = bt_app_start();
+    if (err)
+    {
+        return err;
+    }
+
+    while (true)
+    {
+        item = k_fifo_get(&pouches_fifo, K_FOREVER);
+        if (!item)
+        {
+            LOG_ERR("Failed to get FIFO msg");
+            continue;
+        }
+
+        LOG_INF("Sending pouch to cloud");
+        LOG_HEXDUMP_DBG(item->data, item->len, "pouch");
+
+        if (!IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+        {
+            goto free_item;
+        }
+
+        enum golioth_status status =
+            golioth_gateway_uplink_sync(client, item->data, item->len, SYNC_TIMEOUT_S);
+        if (status != GOLIOTH_OK)
+        {
+            LOG_ERR("Failed to deliver pouch: %d", status);
+            goto free_item;
+        }
+
+        LOG_INF("Successfully sent");
+
+    free_item:
+        free(item);
+    }
+
+    return 0;
+}
