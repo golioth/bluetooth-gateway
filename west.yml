@@ -6,9 +6,11 @@ manifest:
       path: modules/lib/golioth-firmware-sdk
       revision: 574656857cb533679dfd069e12867e800873e50a
       url: https://github.com/golioth/golioth-firmware-sdk.git
-      submodules: true
+
+    - name: zephyr
+      revision: v4.1.0
+      url: https://github.com/zephyrproject-rtos/zephyr.git
       import:
-        file: west-zephyr.yml
         name-allowlist:
           - cmsis
           - hal_nordic
@@ -18,9 +20,7 @@ manifest:
           - nrf_hw_models
           - picolibc
           - segger
-          - tinycrypt
           - zcbor
-          - zephyr
         path-allowlist:
           - "tools/bsim"
           - "tools/bsim/*"
