@@ -13,3 +13,45 @@ patches:
     email: m.niestroj@emb.dev
     date: 2025-01-14
     apply-command: git am
+  - path: zephyr/0003-native_simulator-Get-latest-from-upstream.patch
+    sha256sum: 35a68f88aeaf5243e43265ab9e030f5638c5e1a1f9d7991ee81019930a36823b
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-18
+    apply-command: git am
+  - path: zephyr/0004-native_simulator-Get-latest-from-upstream.patch
+    sha256sum: 202abed48a60c80abc9b6be6688fbf93d519c8ee14675a60551e248040e39fe4
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-24
+    apply-command: git am
+  - path: zephyr/0005-native-posix-arch-Add-option-to-enable-building-of-n.patch
+    sha256sum: 8fcbec6fecf97778aa0571b347b2e488182057975823d5ae4743739c542e5554
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-24
+    apply-command: git am
+  - path: zephyr/0006-native_simulator-Get-latest-from-upstream.patch
+    sha256sum: e366d91d21a89db3e0021b81e5852b7b13ba2e61c3db5a0451d254b65867f754
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-26
+    apply-command: git am
+  - path: zephyr/0007-Bluetooth-userchan-Support-other-libCs.patch
+    sha256sum: ce7c0f0c92a4d5e6ff77c1cb83c6351b083e36c2b15c524362fa7053769b985a
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-26
+    apply-command: git am
+  - path: zephyr/0008-board-native_sim-BT-userchan-now-supports-picolibc.patch
+    sha256sum: 4b3afebc6a97cbb1908f3672168f5ed659285add32db831f2f1c6e92c316c3ee
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-26
+    apply-command: git am

@@ -1,0 +1,397 @@
+From e94368017e7f9d90595777798c5103a5071b28c9 Mon Sep 17 00:00:00 2001
+From: Alberto Escolar Piedras <alberto.escolar.piedras@nordicsemi.no>
+Date: Wed, 26 Feb 2025 16:36:32 +0100
+Subject: [PATCH] Bluetooth: userchan: Support other libCs
+
+Refactor the userchan driver into a top and a bottom part.
+The bottom is the one which interacts with the host and is built
+with the host libC, while the top is built with the embedded code
+and whatever libC that is built with.
+
+Errors (errno) is converted between the top and bottom to ensure they
+are coherent with the local libC.
+
+Signed-off-by: Alberto Escolar Piedras <alberto.escolar.piedras@nordicsemi.no>
+---
+ drivers/bluetooth/hci/CMakeLists.txt    |  10 ++-
+ drivers/bluetooth/hci/Kconfig           |   1 +
+ drivers/bluetooth/hci/userchan.c        | 109 +++++-------------------
+ drivers/bluetooth/hci/userchan_bottom.c |  99 +++++++++++++++++++++
+ drivers/bluetooth/hci/userchan_bottom.h |  25 ++++++
+ 5 files changed, 153 insertions(+), 91 deletions(-)
+ create mode 100644 drivers/bluetooth/hci/userchan_bottom.c
+ create mode 100644 drivers/bluetooth/hci/userchan_bottom.h
+
+diff --git a/drivers/bluetooth/hci/CMakeLists.txt b/drivers/bluetooth/hci/CMakeLists.txt
+index 845c7cd2aa2..0f516cb0f86 100644
+--- a/drivers/bluetooth/hci/CMakeLists.txt
++++ b/drivers/bluetooth/hci/CMakeLists.txt
+@@ -38,7 +38,6 @@ zephyr_library_sources_ifdef(CONFIG_BT_CYW208XX  hci_ifx_cyw208xx.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_STM32_IPM   ipm_stm32wb.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_STM32WBA    hci_stm32wba.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_STM32WB0    hci_stm32wb0.c)
+-zephyr_library_sources_ifdef(CONFIG_BT_USERCHAN    userchan.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_SILABS_EFR32 hci_silabs_efr32.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_SILABS_SIWX91X hci_silabs_siwx91x.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_PSOC6_BLESS hci_ifx_psoc6_bless.c)
+@@ -48,3 +47,12 @@ zephyr_library_sources_ifdef(CONFIG_BT_DA1453X     hci_da1453x.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_DA1469X     hci_da1469x.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_NXP         hci_nxp.c)
+ zephyr_library_sources_ifdef(CONFIG_BT_H4_NXP_CTLR hci_nxp_setup.c)
++
++if(CONFIG_BT_USERCHAN)
++  zephyr_library_sources(userchan.c)
++  if (CONFIG_NATIVE_LIBRARY)
++    target_sources(native_simulator INTERFACE userchan_bottom.c)
++  else()
++    zephyr_library_sources(userchan_bottom.c)
++  endif()
++endif()
+diff --git a/drivers/bluetooth/hci/Kconfig b/drivers/bluetooth/hci/Kconfig
+index edd030d2f17..32ca4a9b709 100644
+--- a/drivers/bluetooth/hci/Kconfig
++++ b/drivers/bluetooth/hci/Kconfig
+@@ -157,6 +157,7 @@ config BT_USERCHAN
+ 	depends on (BOARD_NATIVE_POSIX || BOARD_NATIVE_SIM)
+ 	default y
+ 	depends on DT_HAS_ZEPHYR_BT_HCI_USERCHAN_ENABLED
++	select NATIVE_USE_NSI_ERRNO
+ 	help
+ 	  This driver provides access to the local Linux host's Bluetooth
+ 	  adapter using a User Channel HCI socket to the Linux kernel. It
+diff --git a/drivers/bluetooth/hci/userchan.c b/drivers/bluetooth/hci/userchan.c
+index 50c3165809d..c46647fabd0 100644
+--- a/drivers/bluetooth/hci/userchan.c
++++ b/drivers/bluetooth/hci/userchan.c
+@@ -14,19 +14,15 @@
+ #include <errno.h>
+ #include <stddef.h>
+ #include <stdlib.h>
+-#include <poll.h>
+-#include <errno.h>
+-#include <sys/socket.h>
+ #include <string.h>
+-#include <unistd.h>
+ #include <stdio.h>
+-#include <limits.h>
+-#include <netinet/in.h>
+-#include <arpa/inet.h>
+ #include <zephyr/sys/byteorder.h>
+ 
++#include "nsi_host_trampolines.h"
++#include "nsi_errno.h"
+ #include "soc.h"
+-#include "cmdline.h" /* native_posix command line options header */
++#include "cmdline.h" /* native_sim command line options header */
++#include "userchan_bottom.h"
+ 
+ #include <zephyr/bluetooth/bluetooth.h>
+ #include <zephyr/bluetooth/hci.h>
+@@ -41,19 +37,8 @@ LOG_MODULE_REGISTER(bt_driver);
+ struct uc_data {
+ 	int           fd;
+ 	bt_hci_recv_t recv;
+-
+ };
+ 
+-#define BTPROTO_HCI      1
+-struct sockaddr_hci {
+-	sa_family_t     hci_family;
+-	unsigned short  hci_dev;
+-	unsigned short  hci_channel;
+-};
+-#define HCI_CHANNEL_USER 1
+-
+-#define SOL_HCI          0
+-
+ static K_KERNEL_STACK_DEFINE(rx_thread_stack,
+ 			     CONFIG_ARCH_POSIX_RECOMMENDED_STACK_SIZE);
+ static struct k_thread rx_thread_data;
+@@ -179,13 +164,6 @@ static int32_t hci_packet_complete(const uint8_t *buf, uint16_t buf_len)
+ 	return (int32_t)header_len + payload_len;
+ }
+ 
+-static bool uc_ready(int fd)
+-{
+-	struct pollfd pollfd = { .fd = fd, .events = POLLIN };
+-
+-	return (poll(&pollfd, 1, 0) == 1);
+-}
+-
+ static void rx_thread(void *p1, void *p2, void *p3)
+ {
+ 	const struct device *dev = p1;
+@@ -196,32 +174,32 @@ static void rx_thread(void *p1, void *p2, void *p3)
+ 
+ 	LOG_DBG("started");
+ 
+-	ssize_t frame_size = 0;
++	long frame_size = 0;
+ 
+ 	while (1) {
+ 		static uint8_t frame[512];
+ 		struct net_buf *buf;
+ 		size_t buf_tailroom;
+ 		size_t buf_add_len;
+-		ssize_t len;
++		long len;
+ 		const uint8_t *frame_start = frame;
+ 
+-		if (!uc_ready(uc->fd)) {
++		if (!user_chan_rx_ready(uc->fd)) {
+ 			k_sleep(K_MSEC(1));
+ 			continue;
+ 		}
+ 
+ 		LOG_DBG("calling read()");
+ 
+-		len = read(uc->fd, frame + frame_size, sizeof(frame) - frame_size);
++		len = nsi_host_read(uc->fd, frame + frame_size, sizeof(frame) - frame_size);
+ 		if (len < 0) {
+-			if (errno == EINTR) {
++			if (nsi_host_get_errno() == EINTR) {
+ 				k_yield();
+ 				continue;
+ 			}
+ 
+ 			LOG_ERR("Reading socket failed, errno %d", errno);
+-			close(uc->fd);
++			(void)nsi_host_close(uc->fd);
+ 			uc->fd = -1;
+ 			return;
+ 		}
+@@ -315,66 +293,14 @@ static int uc_send(const struct device *dev, struct net_buf *buf)
+ 		return -EINVAL;
+ 	}
+ 
+-	if (write(uc->fd, buf->data, buf->len) < 0) {
+-		return -errno;
++	if (nsi_host_write(uc->fd, buf->data, buf->len) < 0) {
++		return -nsi_host_get_errno();
+ 	}
+ 
+ 	net_buf_unref(buf);
+ 	return 0;
+ }
+ 
+-static int user_chan_open(void)
+-{
+-	int fd;
+-
+-	if (hci_socket) {
+-		struct sockaddr_hci addr;
+-
+-		fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
+-			    BTPROTO_HCI);
+-		if (fd < 0) {
+-			return -errno;
+-		}
+-
+-		(void)memset(&addr, 0, sizeof(addr));
+-		addr.hci_family = AF_BLUETOOTH;
+-		addr.hci_dev = bt_dev_index;
+-		addr.hci_channel = HCI_CHANNEL_USER;
+-
+-		if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+-			int err = -errno;
+-
+-			close(fd);
+-			return err;
+-		}
+-	} else {
+-		struct sockaddr_in addr;
+-
+-		fd = socket(AF_INET, SOCK_STREAM, 0);
+-		if (fd < 0) {
+-			return -errno;
+-		}
+-
+-		addr.sin_family = AF_INET;
+-		addr.sin_port = htons(port);
+-		if (inet_pton(AF_INET, ip_addr, &(addr.sin_addr)) <= 0) {
+-			int err = -errno;
+-
+-			close(fd);
+-			return err;
+-		}
+-
+-		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+-			int err = -errno;
+-
+-			close(fd);
+-			return err;
+-		}
+-	}
+-
+-	return fd;
+-}
+-
+ static int uc_open(const struct device *dev, bt_hci_recv_t recv)
+ {
+ 	struct uc_data *uc = dev->data;
+@@ -385,9 +311,13 @@ static int uc_open(const struct device *dev, bt_hci_recv_t recv)
+ 		LOG_DBG("hci %s:%d", ip_addr, port);
+ 	}
+ 
+-	uc->fd = user_chan_open();
++	if (hci_socket) {
++		uc->fd = user_chan_socket_open(bt_dev_index);
++	} else {
++		uc->fd = user_chan_net_connect(ip_addr, port);
++	}
+ 	if (uc->fd < 0) {
+-		return uc->fd;
++		return -nsi_errno_from_mid(-uc->fd);
+ 	}
+ 
+ 	uc->recv = recv;
+@@ -449,9 +379,8 @@ static void cmd_bt_dev_found(char *argv, int offset)
+ 			posix_print_error_and_exit("Error: IP port for bluetooth "
+ 						   "hci tcp server is out of range.\n");
+ 		}
+-		struct in_addr addr;
+ 
+-		if (inet_pton(AF_INET, ip_addr, &addr) != 1) {
++		if (user_chan_is_ipaddr_ok(ip_addr) != 1) {
+ 			posix_print_error_and_exit("Error: IP address for bluetooth "
+ 						   "hci tcp server is incorrect.\n");
+ 		}
+diff --git a/drivers/bluetooth/hci/userchan_bottom.c b/drivers/bluetooth/hci/userchan_bottom.c
+new file mode 100644
+index 00000000000..38b0a0b2908
+--- /dev/null
++++ b/drivers/bluetooth/hci/userchan_bottom.c
+@@ -0,0 +1,99 @@
++/**
++ * Copyright (c) 2025 Nordic Semiconductor ASA
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++/*
++ * "Bottom"/Linux/Host side of the userchannel driver. This file is built in the native_simulator
++ * runner context with the host libC, but it's functionality can be called from the "embedded" side
++ */
++
++#include <stdbool.h>
++#include <string.h>
++#include <errno.h>
++#include <poll.h>
++#include <unistd.h>
++#include <sys/socket.h>
++#include <limits.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <nsi_errno.h>
++
++#define BTPROTO_HCI      1
++#define HCI_CHANNEL_USER 1
++
++struct sockaddr_hci {
++	sa_family_t    hci_family;
++	unsigned short hci_dev;
++	unsigned short hci_channel;
++};
++
++bool user_chan_rx_ready(int fd)
++{
++	struct pollfd pollfd = {.fd = fd, .events = POLLIN};
++
++	return (poll(&pollfd, 1, 0) == 1);
++}
++
++int user_chan_is_ipaddr_ok(char ip_addr[])
++{
++	struct in_addr addr;
++
++	return inet_pton(AF_INET, ip_addr, &addr);
++}
++
++int user_chan_socket_open(unsigned short bt_dev_index)
++{
++	int fd;
++	struct sockaddr_hci addr;
++
++	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK, BTPROTO_HCI);
++	if (fd < 0) {
++		return -nsi_errno_to_mid(errno);
++	}
++
++	(void)memset(&addr, 0, sizeof(addr));
++	addr.hci_family = AF_BLUETOOTH;
++	addr.hci_dev = bt_dev_index;
++	addr.hci_channel = HCI_CHANNEL_USER;
++
++	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
++		int err = -nsi_errno_to_mid(errno);
++
++		close(fd);
++		return err;
++	}
++
++	return fd;
++}
++
++
++int user_chan_net_connect(char ip_addr[], unsigned int port)
++{
++	int fd;
++	struct sockaddr_in addr;
++
++	fd = socket(AF_INET, SOCK_STREAM, 0);
++	if (fd < 0) {
++		return -nsi_errno_to_mid(errno);
++	}
++
++	addr.sin_family = AF_INET;
++	addr.sin_port = htons(port);
++	if (inet_pton(AF_INET, ip_addr, &(addr.sin_addr)) <= 0) {
++		int err = -nsi_errno_to_mid(errno);
++
++		close(fd);
++		return err;
++	}
++
++	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
++		int err = -nsi_errno_to_mid(errno);
++
++		close(fd);
++		return err;
++	}
++
++	return fd;
++}
+diff --git a/drivers/bluetooth/hci/userchan_bottom.h b/drivers/bluetooth/hci/userchan_bottom.h
+new file mode 100644
+index 00000000000..732f0970c2b
+--- /dev/null
++++ b/drivers/bluetooth/hci/userchan_bottom.h
+@@ -0,0 +1,25 @@
++/**
++ * Copyright (c) 2025 Nordic Semiconductor ASA
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#ifndef DRIVERS_BLUETOOTH_HCI_USERCHAN_BOTTOM_H
++#define DRIVERS_BLUETOOTH_HCI_USERCHAN_BOTTOM_H
++
++#include <stdbool.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++bool user_chan_rx_ready(int fd);
++int user_chan_is_ipaddr_ok(char ip_addr[]);
++int user_chan_socket_open(unsigned short bt_dev_index);
++int user_chan_net_connect(char ip_addr[], unsigned int port);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* DRIVERS_BLUETOOTH_HCI_USERCHAN_BOTTOM_H */
+-- 
+2.48.1
+
