@@ -1,0 +1,113 @@
+From c78e0e9cc430215bf73bdd9ed7f0b747d2f1300c Mon Sep 17 00:00:00 2001
+From: Daniel Mangum <georgedanielmangum@gmail.com>
+Date: Thu, 13 Feb 2025 17:50:32 -0500
+Subject: [PATCH] pouch temp
+
+Signed-off-by: Daniel Mangum <georgedanielmangum@gmail.com>
+---
+ include/golioth/gateway.h  | 21 ++++++++++++++++
+ port/zephyr/CMakeLists.txt |  1 +
+ src/gateway.c              | 51 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 73 insertions(+)
+ create mode 100644 include/golioth/gateway.h
+ create mode 100644 src/gateway.c
+
+diff --git a/include/golioth/gateway.h b/include/golioth/gateway.h
+new file mode 100644
+index 00000000..ab37c68c
+--- /dev/null
++++ b/include/golioth/gateway.h
+@@ -0,0 +1,21 @@
++/*
++ * Copyright (c) 2024 Golioth, Inc.
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++#pragma once
++
++#include <golioth/golioth_status.h>
++#include <golioth/client.h>
++#include <stdlib.h>
++
++enum golioth_status golioth_gateway_uplink_async(struct golioth_client *client,
++                                                 const uint8_t *buf,
++                                                 size_t buf_len,
++                                                 golioth_set_cb_fn callback,
++                                                 void *callback_arg);
++
++enum golioth_status golioth_gateway_uplink_sync(struct golioth_client *client,
++                                                const uint8_t *buf,
++                                                size_t buf_len,
++                                                int32_t timeout_s);
+diff --git a/port/zephyr/CMakeLists.txt b/port/zephyr/CMakeLists.txt
+index 2b73184b..65346e91 100644
+--- a/port/zephyr/CMakeLists.txt
++++ b/port/zephyr/CMakeLists.txt
+@@ -41,6 +41,7 @@ zephyr_library_sources(
+     ../../src/event_group.c
+     ../../src/fw_update.c
+     ../../src/coap_blockwise.c
++    ../../src/gateway.c
+     ../../src/lightdb_state.c
+     ../../src/location.c
+     ../../src/location_cellular.c
+diff --git a/src/gateway.c b/src/gateway.c
+new file mode 100644
+index 00000000..6a48d2b9
+--- /dev/null
++++ b/src/gateway.c
+@@ -0,0 +1,51 @@
++/*
++ * Copyright (c) 2024 Golioth, Inc.
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#include <golioth/gateway.h>
++#include "coap_client.h"
++
++enum golioth_status golioth_gateway_uplink_async(struct golioth_client *client,
++                                                 const uint8_t *buf,
++                                                 size_t buf_len,
++                                                 golioth_set_cb_fn callback,
++                                                 void *callback_arg)
++{
++    uint8_t token[GOLIOTH_COAP_TOKEN_LEN];
++    golioth_coap_next_token(token);
++
++    return golioth_coap_client_set(client,
++                                   token,
++                                   ".pouch",
++                                   "",
++                                   GOLIOTH_CONTENT_TYPE_OCTET_STREAM,
++                                   buf,
++                                   buf_len,
++                                   callback,
++                                   callback_arg,
++                                   false,
++                                   GOLIOTH_SYS_WAIT_FOREVER);
++}
++
++enum golioth_status golioth_gateway_uplink_sync(struct golioth_client *client,
++                                                const uint8_t *buf,
++                                                size_t buf_len,
++                                                int32_t timeout_s)
++{
++    uint8_t token[GOLIOTH_COAP_TOKEN_LEN];
++    golioth_coap_next_token(token);
++
++    return golioth_coap_client_set(client,
++                                   token,
++                                   ".pouch",
++                                   "",
++                                   GOLIOTH_CONTENT_TYPE_OCTET_STREAM,
++                                   buf,
++                                   buf_len,
++                                   NULL,
++                                   NULL,
++                                   true,
++                                   timeout_s);
++}
+-- 
+2.48.1
+
