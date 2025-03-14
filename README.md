@@ -3,7 +3,7 @@
 ## Setup
 
 ```
-west init -m https://github.com/golioth/bluetooth-gateway.git
+west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-zephyr.yml
 west update
 west patch apply
 ```
