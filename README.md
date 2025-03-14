@@ -84,6 +84,59 @@ west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
 west flash
 ```
 
+### native_sim with USB Bluetooth dongle
+
+It is possible to communicate with real (physical) Bluetooth devices,
+while still maintaining almost all benefits of `native_sim` platform,
+such as development speed, host debugging capabilities, infinite
+resources, etc. This is achieved by Bluetooth HCI (Host Controller
+Interface), which can be implemented on various transport layers (UART,
+SPI, USB, Linux kernel HCI, ...).
+
+When building `native_sim` with Bluetooth support on Linux both UART and
+Linux kernel HCI transports are supported. Both work almost the same,
+since they operate on stream of data. See [native_sim in
+Zephyr](https://docs.zephyrproject.org/4.1.0/boards/native/native_sim/doc/index.html)
+for details.
+
+Recommended setup for testing is [nRF52840
+Dongle](https://docs.zephyrproject.org/latest/boards/nordic/nrf52840dongle/doc/index.html)
+with Bluetooth controller available through HCI UART. The main advantage
+is that controller will run the same firmware (Zephyr HCI UART) as
+gateway running on physical devices like nRF9160-DK (there is even the
+same nRF52840 Bluetooth Controller chip) or Thingy:91 X (which contains
+slightly more powerful nRF5340 as Bluetooth Controller).
+
+Build Bluetooth Controller firmware with HCI UART over USB CDC-ACM for
+nRF52840 Dongle:
+
+```
+west build -p -b nrf52840dongle/nrf52840 zephyr/samples/bluetooth/hci_uart
+```
+
+See [Programming and
+Debugging](https://docs.zephyrproject.org/latest/boards/nordic/nrf52840dongle/doc/index.html#programming-and-debugging)
+page on how to flash that on the dongle.
+
+After connecting this dongle to host PC it is not required to connect
+that to `native_sim`. First setup a proxy using `socat` so it will be
+possible to access HCI UART data stream over TCP (port 12345 is used as
+example):
+
+```
+while :; do socat -x -dd /dev/serial/by-id/usb-ZEPHYR_Zephyr_HCI_UART_sample_98AE46C3F73B765A-if00,rawer,b115200 tcp-listen:12345,reuseaddr; done
+```
+
+then run `native_sim` with following command:
+
+```
+build/zephyr/zephyr.exe -bt-dev=127.0.0.1:12345
+```
+
+At this stage `native_sim` will connect to cloud using native networking
+(via Native Simulator Offloaded Sockets) and still be able to find local
+Bluetooth devices, communicate with them and send requested pouches.
+
 ## Useful options for debugging and development
 
 ### `CONFIG_GATEWAY_CLOUD`
