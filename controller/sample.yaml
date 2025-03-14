@@ -1,0 +1,10 @@
+sample:
+  name: Bluetooth HCI UART controller for gateway
+tests:
+  sample.golioth.bluetooth_gateway.controller:
+    harness: bluetooth
+    platform_allow:
+      - nrf9160dk/nrf52840
+    tags:
+      - uart
+      - bluetooth
