@@ -35,13 +35,43 @@ static void on_client_event(struct golioth_client *client,
     LOG_INF("Golioth client %s", is_connected ? "connected" : "disconnected");
 }
 
-static void connect_to_cloud(void)
+static void connect_golioth_client(void)
 {
     const struct golioth_client_config *client_config = golioth_sample_credentials_get();
 
     client = golioth_client_create(client_config);
 
     golioth_client_register_event_callback(client, on_client_event, NULL);
+}
+
+#ifdef CONFIG_NRF_MODEM
+#include <modem/lte_lc.h>
+static void lte_handler(const struct lte_lc_evt *const evt)
+{
+    if (evt->type == LTE_LC_EVT_NW_REG_STATUS)
+    {
+
+        if ((evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_HOME)
+            || (evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_ROAMING))
+        {
+
+            if (!client)
+            {
+                connect_golioth_client();
+            }
+        }
+    }
+}
+#endif /* CONFIG_NRF_MODEM */
+
+static void connect_to_cloud(void)
+{
+#if defined(CONFIG_NRF_MODEM)
+    LOG_INF("Connecting to LTE, this may take some time...");
+    lte_lc_connect_async(lte_handler);
+#else
+    connect_golioth_client();
+#endif
 
     LOG_INF("Waiting for network connection");
     k_sem_take(&connected, K_FOREVER);
