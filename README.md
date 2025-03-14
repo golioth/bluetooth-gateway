@@ -2,13 +2,52 @@
 
 ## Setup
 
+NCS for `nrf9160dk`:
+
+```
+west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-ncs.yml
+west update
+west patch apply
+```
+
+Vanilla Zephyr for `nrf52_bsim` and `native_sim`:
 ```
 west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-zephyr.yml
 west update
 west patch apply
 ```
 
+Quick switch between Zephyr and NCS:
+
+```
+west config manifest.file west-zephyr.yml && west update && west patch apply
+west config manifest.file west-ncs.yml && west update && west patch apply
+```
+
 ## Build and run
+
+### nRF9160 DK
+
+Bluetooth controller is running on nRF52840. This means that proper
+firmware needs to be flashed (HCI controller over UART) in order to
+access Bluetooth from nRF9160 chip.
+
+This is done by by changing `SWD` switch from `nRF91` to `nRF52` on
+development kit, then building and flashing firmware with:
+
+```
+west build -p -b nrf9160dk/nrf52840 bluetooth-gateway/controller
+west flash
+```
+
+Gateway firmware runs on nRF9160 chip. There is direct access to LTE
+modem and also Bluetooth Host stack, which communicats with Bluetooth
+Controller over UART. Build and flash it with:
+
+```
+west build -p -b nrf9160dk/nrf9160/ns bluetooth-gateway/gateway --sysbuild
+west flash
+```
 
 ### nrf52_bsim with sysbuild
 
