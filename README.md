@@ -26,6 +26,39 @@ west config manifest.file west-ncs.yml && west update && west patch apply
 
 ## Build and run
 
+### Thingy:91 X
+
+Controller on nRF5340 NET core does not work yet with newest NCS
+version (for unknown reason yet), so it is required to use older version
+of NCS which is specified in `west-thingy91x-controller.yml`. In order
+to checkout proper revision and apply required patches type:
+
+```
+west config manifest.file west-thingy91x-controller.yml && west update
+west forall zephyr -c "git am $(west topdir)/bluetooth-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
+```
+
+Bluetooth controller is running on nRF5340. This means that proper
+firmware needs to be flashed (HCI controller over UART) in order to
+access Bluetooth from nRF9151 chip.
+
+This is done by by changing `SWD` switch from `nRF91` to `nRF53` on
+Thingy, then building and flashing firmware with:
+
+```
+west build -p -b thingy91x/nrf5340/cpunet bluetooth-gateway/controller --sysbuild -- -DSB_CONFIG_THINGY91X_NO_PREDEFINED_LAYOUT=y
+west flash
+```
+
+Gateway firmware runs on nRF9151 chip. There is direct access to LTE
+modem and also Bluetooth Host stack, which communicats with Bluetooth
+Controller over UART. Build and flash it with:
+
+```
+west build -p -b thingy91x/nrf9151/ns bluetooth-gateway/gateway --sysbuild
+west flash
+```
+
 ### nRF9160 DK
 
 Bluetooth controller is running on nRF52840. This means that proper
