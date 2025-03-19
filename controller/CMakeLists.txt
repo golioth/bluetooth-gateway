@@ -5,6 +5,13 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(bluetooth_gateway_controller)
 
-target_sources(app PRIVATE
+if(CONFIG_NRF_SW_LPUART)
+  target_sources(app PRIVATE
     ${ZEPHYR_BASE}/samples/bluetooth/hci_uart/src/main.c
-)
+  )
+else()
+  target_sources(app PRIVATE
+    ${ZEPHYR_BASE}/samples/bluetooth/hci_uart_async/src/hci_uart_async.c
+    ${ZEPHYR_BASE}/samples/bluetooth/hci_uart_async/src/main.c
+  )
+endif()
