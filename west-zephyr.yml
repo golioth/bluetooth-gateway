@@ -29,7 +29,7 @@ manifest:
     - name: pouch
       path: pouch
       revision: 1a0c1ffe591cbde22d373de5756157ffe52aa3ab
-      url: git@github.com:golioth/pouch.git
+      url: https://github.com/golioth/pouch
 
   self:
     path: bluetooth-gateway
