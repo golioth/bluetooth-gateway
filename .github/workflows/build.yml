@@ -1,0 +1,123 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    container: golioth/golioth-zephyr-base:0.17.0-SDK-v0
+    env:
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: bluetooth-gateway
+
+      - name: Init and update west
+        run: |
+          west init -l bluetooth-gateway --mf west-ncs.yml
+          west update --narrow -o=--depth=1
+          git config --global user.email user@git-scm.com
+          git config --global user.name "Git User"
+          west patch apply
+
+      - name: Install pip packages
+        run: |
+          pip3 install \
+            -r zephyr/scripts/requirements-base.txt
+
+          pip3 install            \
+            cryptography==41.0.7  \
+            pyasn1                \
+            pyyaml                \
+            cbor>=1.0.0           \
+            imgtool>=1.9.0        \
+            jinja2                \
+            click
+
+      - name: Build nRF9160 DK Gateway
+        run: |
+          west build \
+            -d build_gateway_dk \
+            -b nrf9160dk/nrf9160/ns \
+            bluetooth-gateway/gateway \
+            --sysbuild
+
+      - name: Upload nRF9160 DK Gateway artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nrf9160dk-gateway
+          path: |
+            build_gateway_dk/dfu_application.zip
+            build_gateway_dk/gateway/zephyr/zephyr.hex
+            build_gateway_dk/gateway/zephyr/zephyr.elf
+            build_gateway_dk/gateway/zephyr/zephyr.map
+
+      - name: Build nRF9160 DK Controller
+        run: |
+          west build \
+            -d build_controller_dk \
+            -b nrf9160dk/nrf52840 \
+            bluetooth-gateway/controller \
+            --no-sysbuild
+
+      - name: Upload nRF9160 DK Controller artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nrf9160dk-controller
+          path: |
+            build_controller_dk/zephyr/zephyr.hex
+            build_controller_dk/zephyr/zephyr.elf
+            build_controller_dk/zephyr/zephyr.map
+
+      - name: Build Thingy:91 X Gateway
+        run: |
+          west build \
+            -d build_gateway_thingy \
+            -b thingy91x/nrf9151/ns \
+            bluetooth-gateway/gateway \
+            --sysbuild
+
+      - name: Upload Thingy:91 X Gateway artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thingy91x-gateway
+          path: |
+            build_gateway_thingy/dfu_application.zip
+            build_gateway_thingy/gateway/zephyr/zephyr.hex
+            build_gateway_thingy/gateway/zephyr/zephyr.elf
+            build_gateway_thingy/gateway/zephyr/zephyr.map
+
+      - name: Switch to controller manifest for Thingy:91 X
+        run: |
+          west config manifest.file west-thingy91x-controller.yml
+          west update --narrow -o=--depth=1
+          west forall zephyr -c "git am $GITHUB_WORKSPACE/bluetooth-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
+
+      - name: Build Thingy:91 X Controller
+        run: |
+          west build \
+            -d build_controller_thingy \
+            -b thingy91x/nrf5340/cpunet \
+            bluetooth-gateway/controller \
+            --sysbuild \
+            -- -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
+
+      - name: Upload Thingy:91 X Controller artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thingy91x-controller
+          path: |
+            build_controller_thingy/dfu_application.zip
+            build_controller_thingy/controller/zephyr/zephyr.hex
+            build_controller_thingy/controller/zephyr/zephyr.elf
+            build_controller_thingy/controller/zephyr/zephyr.map
