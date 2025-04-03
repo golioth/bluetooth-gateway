@@ -27,7 +27,7 @@ manifest:
 
     - name: pouch
       path: pouch
-      revision: c6e368ba0985d1ad10822c73986eb3f313180da2
+      revision: 278efbb3d1c6e07a00a34696ba13eac3a01ef019
       url: git@github.com:golioth/pouch.git
 
   self:

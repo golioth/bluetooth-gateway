@@ -48,6 +48,6 @@ if(BOARD MATCHES "bsim")
     ${ZEPHYR_BASE}/samples/bluetooth/peripheral)
   add_peripheral(periodic_uplink
     ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/samples/peripheral/periodic_uplink)
-  add_peripheral(toothfairy_example
-    ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/../pouch/examples/toothfairy)
+  add_peripheral(ble_gatt_example
+    ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/../pouch/examples/ble_gatt)
 endif()
