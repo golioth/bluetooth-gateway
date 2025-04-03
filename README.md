@@ -91,14 +91,14 @@ components are BabbleSim programs:
 
   * 2.4G PHY implementation (coordinator of the whole simulation)
   * Bluetooth peripherals: either generic samples from
-    `zephyr/bluetooth/peripheral*` or toothfairy nodes like
-    `pouch/examples/toothfairy`)
+    `zephyr/bluetooth/peripheral*` or BLE GATT nodes like
+    `pouch/examples/ble_gatt`)
   * (optional) BabbleSim handbrake
 
 Default sysbuild configuration builds following:
 
   * `bluetooth-gateway/gateway` (main component)
-  * `pouch/examples/zephyr/toothfairy` (toothfairy node)
+  * `pouch/examples/zephyr/ble_gatt` (BLE GATT node)
   * `tools/bsim/bin/bs_2G4_phy_v1` (2.4G PHY BabbleSim coordinator)
   * `tools/bsim/bin/bs_device_handbrake` (BabbleSim handbrake, used to
     slow down simulation to almost realtime)
@@ -112,12 +112,12 @@ handled automatically by custom runners implemented in
 `scripts/runners/bsim_*.py`, which collect information about simulation
 and run all programs.
 
-Default example of running gateway with toothfairy node (and required
+Default example of running gateway with BLE GATT node (and required
 BabbleSim components) is done with following commands:
 
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -Dperipheral_toothfairy_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
+  -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
   -DEXTRA_CONF_FILE=$(west topdir)/gw-001.conf
 west flash
 ```
@@ -133,25 +133,25 @@ CONFIG_GOLIOTH_SAMPLE_PSK_ID="my-psk-id@my-project"
 CONFIG_GOLIOTH_SAMPLE_PSK="my-psk"
 ```
 
-It is possible to include more toothfairy nodes in simulation. Example of
+It is possible to include more BLE GATT nodes in simulation. Example of
 running 2 nodes:
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -DSB_CONFIG_PERIPHERAL_TOOTHFAIRY_EXAMPLE_NUM=2 \
-  -Dperipheral_toothfairy_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
-  -Dperipheral_toothfairy_example_1_CONFIG_POUCH_DEVICE_ID='"bbbbbbbbbbbbbbbbbbbbbbbb"' \
+  -DSB_CONFIG_PERIPHERAL_BLE_GATT_EXAMPLE_NUM=2 \
+  -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
+  -Dperipheral_ble_gatt_example_1_CONFIG_POUCH_DEVICE_ID='"bbbbbbbbbbbbbbbbbbbbbbbb"' \
   -DEXTRA_CONF_FILE=$(west topdir)/gw-001.conf
 west flash
 ```
 
-It is even possible to include other non-toothfairy nodes. So far there
+It is even possible to include other non-BLE GATT nodes. So far there
 is support for vanilla Zephyr peripheral sample
 `zephyr/samples/bluetooth/peripheral`:
 
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
   -DSB_CONFIG_PERIPHERAL_ZEPHYR=y
-  -Dperipheral_toothfairy_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
+  -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
   -DEXTRA_CONF_FILE=$(west topdir)/gw-001.conf
 west flash
 ```

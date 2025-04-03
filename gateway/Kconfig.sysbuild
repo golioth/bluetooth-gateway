@@ -45,16 +45,16 @@ config PERIPHERAL_PERIODIC_UPLINK_NUM
 	default 1
 	depends on PERIPHERAL_PERIODIC_UPLINK
 
-config PERIPHERAL_TOOTHFAIRY_EXAMPLE
-	bool "Toothfairy example"
+config PERIPHERAL_BLE_GATT_EXAMPLE
+	bool "BLE GATT example"
 	default y
 	help
-	  Toothfairy sample.
+	  BLE GATT sample.
 
-config PERIPHERAL_TOOTHFAIRY_EXAMPLE_NUM
-	int "Number of Toothfairy example peripherals"
+config PERIPHERAL_BLE_GATT_EXAMPLE_NUM
+	int "Number of BLE GATT example peripherals"
 	default 1
-	depends on PERIPHERAL_TOOTHFAIRY_EXAMPLE
+	depends on PERIPHERAL_BLE_GATT_EXAMPLE
 
 endmenu
 

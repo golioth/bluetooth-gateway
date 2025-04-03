@@ -13,7 +13,7 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/sys/byteorder.h>
 
-#include <pouch/transport/toothfairy/peripheral.h>
+#include <pouch/transport/ble_gatt/peripheral.h>
 
 #include "bt.h"
 #include "fifo.h"
@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(bt);
 
 static struct bt_conn *default_conn;
 
-static const uint8_t tf_svc_uuid[] = {TF_UUID_GOLIOTH_SVC_VAL};
+static const uint8_t tf_svc_uuid[] = {GOLIOTH_BLE_GATT_UUID_SVC_VAL};
 
 #define TF_PACKET_START 0x01
 #define TF_PACKET_MORE 0x02
@@ -159,7 +159,7 @@ static struct bt_gatt_read_params uplink_read_params = {
         },
 };
 
-/* Callback for handling Toothfairy Uplink Response */
+/* Callback for handling BLE GATT Uplink Response */
 static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  uint8_t err,
                                  struct bt_gatt_read_params *params,
@@ -170,13 +170,13 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
 
     if (err)
     {
-        LOG_ERR("Failed to read Toothfairy Uplink (err %d)", err);
+        LOG_ERR("Failed to read BLE GATT Uplink (err %d)", err);
         return BT_GATT_ITER_STOP;
     }
 
     if (data)
     {
-        LOG_HEXDUMP_INF(data, length, "[READ] Toothfairy Uplink");
+        LOG_HEXDUMP_INF(data, length, "[READ] BLE GATT Uplink");
     }
 
     if (length < sizeof(*pkt))
