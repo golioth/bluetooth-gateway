@@ -38,6 +38,16 @@ static void on_client_event(struct golioth_client *client,
 static void connect_golioth_client(void)
 {
     const struct golioth_client_config *client_config = golioth_sample_credentials_get();
+    if (client_config == NULL || client_config->credentials.psk.psk_id_len == 0
+        || client_config->credentials.psk.psk_len == 0)
+    {
+        LOG_ERR("No credentials found.");
+        LOG_ERR(
+            "Please store your credentials with the following commands, then reboot the device.");
+        LOG_ERR("\tsettings set golioth/psk-id <your-psk-id>");
+        LOG_ERR("\tsettings set golioth/psk <your-psk>");
+        return;
+    }
 
     client = golioth_client_create(client_config);
 
