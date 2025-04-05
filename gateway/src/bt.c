@@ -13,7 +13,8 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/sys/byteorder.h>
 
-#include <pouch/transport/ble_gatt/peripheral.h>
+#include <pouch/transport/ble_gatt/common/uuids.h>
+#include <pouch/transport/ble_gatt/common/packetizer.h>
 
 #include "bt.h"
 #include "fifo.h"
@@ -24,16 +25,6 @@ LOG_MODULE_REGISTER(bt);
 static struct bt_conn *default_conn;
 
 static const uint8_t tf_svc_uuid[] = {GOLIOTH_BLE_GATT_UUID_SVC_VAL};
-
-#define TF_PACKET_START 0x01
-#define TF_PACKET_MORE 0x02
-#define TF_PACKET_END 0x03
-
-struct tf_packet
-{
-    uint8_t ctrl;
-    uint8_t data[];
-} __packed;
 
 struct tf_svc_adv_data
 {
@@ -146,14 +137,11 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  const void *data,
                                  uint16_t length);
 
-#define TF_UUID_GOLIOTH_UPLINK_CHRC_VAL \
-    BT_UUID_128_ENCODE(0x89a316ae, 0x89b7, 0x4ef6, 0xb1d3, 0x5c9a6e27d273)
-
 static struct bt_gatt_read_params uplink_read_params = {
     .func = tf_uplink_read_cb,
     .by_uuid =
         {
-            .uuid = BT_UUID_DECLARE_128(TF_UUID_GOLIOTH_UPLINK_CHRC_VAL),
+            .uuid = BT_UUID_DECLARE_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL),
             .start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE,
             .end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE,
         },
@@ -166,7 +154,11 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  const void *data,
                                  uint16_t length)
 {
-    const struct tf_packet *pkt = data;
+    bool is_first = false;
+    bool is_last = false;
+    const void *payload = NULL;
+    int payload_len =
+        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
 
     if (err)
     {
@@ -179,14 +171,9 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
         LOG_HEXDUMP_INF(data, length, "[READ] BLE GATT Uplink");
     }
 
-    if (length < sizeof(*pkt))
-    {
-        return BT_GATT_ITER_STOP;
-    }
+    net_buf_simple_add_mem(pouch, payload, payload_len);
 
-    net_buf_simple_add_mem(pouch, pkt->data, length - sizeof(*pkt));
-
-    if (pkt->ctrl == TF_PACKET_END)
+    if (is_last)
     {
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 
