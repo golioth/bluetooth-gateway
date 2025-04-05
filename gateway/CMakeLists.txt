@@ -9,5 +9,3 @@ target_sources(app PRIVATE
   src/fifo.c
   src/main.c
 )
-
-target_include_directories(app PRIVATE ${ZEPHYR_POUCH_MODULE_DIR}/include)
