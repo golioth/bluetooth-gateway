@@ -51,6 +51,16 @@ struct golioth_node_info
         uint16_t downlink;
         uint16_t uplink;
     } attr_handles;
+    union
+    {
+        struct bt_gatt_discover_params discover_params;
+        struct bt_gatt_read_params read_params;
+    };
+    struct
+    {
+        struct net_buf_simple buf;
+        uint8_t buf_data[256];
+    } scratch;
 };
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
@@ -147,19 +157,6 @@ static void start_scan(void)
     LOG_INF("Scanning successfully started");
 }
 
-static struct net_buf_simple *pouch = NET_BUF_SIMPLE(256);
-
-static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
-                                 uint8_t err,
-                                 struct bt_gatt_read_params *params,
-                                 const void *data,
-                                 uint16_t length);
-
-static struct bt_gatt_read_params uplink_read_params = {
-    .handle_count = 1,
-    .func = tf_uplink_read_cb,
-};
-
 /* Callback for handling BLE GATT Uplink Response */
 static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  uint8_t err,
@@ -190,32 +187,34 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
         LOG_HEXDUMP_INF(data, length, "[READ] BLE GATT Uplink");
     }
 
-    net_buf_simple_add_mem(pouch, payload, payload_len);
+    struct net_buf_simple *buf = &connected_nodes[bt_conn_index(conn)].scratch.buf;
+
+    net_buf_simple_add_mem(buf, payload, payload_len);
 
     if (is_last)
     {
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 
-        LOG_HEXDUMP_DBG(pouch->data, pouch->len, "pouch");
+        LOG_HEXDUMP_DBG(buf->data, buf->len, "pouch");
 
         struct pouch_fifo_item *item;
 
-        item = malloc(sizeof(*item) + pouch->len);
+        item = malloc(sizeof(*item) + buf->len);
         if (!item)
         {
             LOG_ERR("Failed to alloc new item");
             return BT_GATT_ITER_STOP;
         }
 
-        memcpy(item->data, pouch->data, pouch->len);
-        item->len = pouch->len;
+        memcpy(item->data, buf->data, buf->len);
+        item->len = buf->len;
 
         k_fifo_put(&pouches_fifo, item);
 
         return BT_GATT_ITER_STOP;
     }
 
-    err = bt_gatt_read(conn, &uplink_read_params);
+    err = bt_gatt_read(conn, params);
     if (err)
     {
         LOG_ERR("BT (re)read request failed: %d", err);
@@ -238,8 +237,13 @@ static uint8_t discover_func(struct bt_conn *conn,
             uint16_t uplink_handle = connected_nodes[conn_idx].attr_handles.uplink;
             if (0 != uplink_handle)
             {
-                uplink_read_params.single.handle = uplink_handle;
-                int err = bt_gatt_read(conn, &uplink_read_params);
+                struct bt_gatt_read_params *read_params = &connected_nodes[conn_idx].read_params;
+                memset(read_params, 0, sizeof(*read_params));
+
+                read_params->func = tf_uplink_read_cb;
+                read_params->handle_count = 1;
+                read_params->single.handle = uplink_handle;
+                int err = bt_gatt_read(conn, read_params);
                 if (err)
                 {
                     LOG_ERR("BT read request failed: %d", err);
@@ -300,10 +304,6 @@ static uint8_t discover_func(struct bt_conn *conn,
     return BT_GATT_ITER_STOP;
 }
 
-static struct bt_gatt_discover_params disc_params = {
-    .func = discover_func,
-};
-
 static void bt_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
@@ -320,17 +320,21 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
 
     LOG_INF("Connected: %s", addr);
 
-    net_buf_simple_init(pouch, 0);
-
     uint8_t conn_idx = bt_conn_index(conn);
     memset(&connected_nodes[conn_idx], 0, sizeof(connected_nodes[conn_idx]));
 
-    disc_params.type = BT_GATT_DISCOVER_PRIMARY;
-    disc_params.start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
-    disc_params.end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
-    disc_params.uuid = &golioth_svc_uuid.uuid;
+    struct net_buf_simple *buf = &connected_nodes[conn_idx].scratch.buf;
+    net_buf_simple_init(buf, 0);
 
-    err = bt_gatt_discover(conn, &disc_params);
+    struct bt_gatt_discover_params *discover_params = &connected_nodes[conn_idx].discover_params;
+
+    discover_params->func = discover_func;
+    discover_params->type = BT_GATT_DISCOVER_PRIMARY;
+    discover_params->start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
+    discover_params->end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
+    discover_params->uuid = &golioth_svc_uuid.uuid;
+
+    err = bt_gatt_discover(conn, discover_params);
     if (err)
     {
         LOG_ERR("Failed to start discovery: %d", err);
