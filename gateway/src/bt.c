@@ -154,15 +154,21 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  const void *data,
                                  uint16_t length)
 {
-    bool is_first = false;
-    bool is_last = false;
-    const void *payload = NULL;
-    int payload_len =
-        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
-
     if (err)
     {
         LOG_ERR("Failed to read BLE GATT Uplink (err %d)", err);
+        return BT_GATT_ITER_STOP;
+    }
+
+    bool is_first = false;
+    bool is_last = false;
+    const void *payload = NULL;
+    ssize_t payload_len =
+        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
+    if (payload_len < 0)
+    {
+        LOG_ERR("Failed to decode BLE GATT Uplink (err %d)", (int) payload_len);
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         return BT_GATT_ITER_STOP;
     }
 
