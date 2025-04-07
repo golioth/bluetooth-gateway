@@ -46,7 +46,7 @@ This is done by by changing `SWD` switch from `nRF91` to `nRF53` on
 Thingy, then building and flashing firmware with:
 
 ```
-west build -p -b thingy91x/nrf5340/cpunet bluetooth-gateway/controller --sysbuild
+west build -p -b thingy91x/nrf5340/cpunet bluetooth-gateway/controller --sysbuild -- -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
 west flash
 ```
 
