@@ -24,7 +24,13 @@ LOG_MODULE_REGISTER(bt);
 
 static struct bt_conn *default_conn;
 
-static const uint8_t tf_svc_uuid[] = {GOLIOTH_BLE_GATT_UUID_SVC_VAL};
+static const struct bt_uuid_128 golioth_svc_uuid = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL);
+static const struct bt_uuid_128 golioth_info_chrc_uuid =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_INFO_CHRC_VAL);
+static const struct bt_uuid_128 golioth_downlink_chrc_uuid =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DOWNLINK_CHRC_VAL);
+static const struct bt_uuid_128 golioth_uplink_chrc_uuid =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL);
 
 struct tf_svc_adv_data
 {
@@ -37,6 +43,18 @@ struct tf_data
     struct tf_svc_adv_data adv_data;
 };
 
+struct golioth_node_info
+{
+    struct
+    {
+        uint16_t info;
+        uint16_t downlink;
+        uint16_t uplink;
+    } attr_handles;
+};
+
+static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
+
 static bool data_cb(struct bt_data *data, void *user_data)
 {
     struct tf_data *tf = user_data;
@@ -47,10 +65,10 @@ static bool data_cb(struct bt_data *data, void *user_data)
         {
             struct tf_svc_adv_data *adv_data;
 
-            if (data->data_len >= sizeof(tf_svc_uuid) + sizeof(*adv_data)
-                && memcmp(tf_svc_uuid, data->data, sizeof(tf_svc_uuid)) == 0)
+            if (data->data_len >= sizeof(golioth_svc_uuid.val) + sizeof(*adv_data)
+                && memcmp(golioth_svc_uuid.val, data->data, sizeof(golioth_svc_uuid.val)) == 0)
             {
-                adv_data = (void *) &data->data[sizeof(tf_svc_uuid)];
+                adv_data = (void *) &data->data[sizeof(golioth_svc_uuid.val)];
 
                 tf->is_tf = true;
                 tf->adv_data = *adv_data;
@@ -138,13 +156,8 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  uint16_t length);
 
 static struct bt_gatt_read_params uplink_read_params = {
+    .handle_count = 1,
     .func = tf_uplink_read_cb,
-    .by_uuid =
-        {
-            .uuid = BT_UUID_DECLARE_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL),
-            .start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE,
-            .end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE,
-        },
 };
 
 /* Callback for handling BLE GATT Uplink Response */
@@ -212,6 +225,85 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
     return BT_GATT_ITER_STOP;
 }
 
+static uint8_t discover_func(struct bt_conn *conn,
+                             const struct bt_gatt_attr *attr,
+                             struct bt_gatt_discover_params *params)
+{
+    uint8_t conn_idx = bt_conn_index(conn);
+
+    if (NULL == attr)
+    {
+        if (BT_GATT_DISCOVER_CHARACTERISTIC == params->type)
+        {
+            uint16_t uplink_handle = connected_nodes[conn_idx].attr_handles.uplink;
+            if (0 != uplink_handle)
+            {
+                uplink_read_params.single.handle = uplink_handle;
+                int err = bt_gatt_read(conn, &uplink_read_params);
+                if (err)
+                {
+                    LOG_ERR("BT read request failed: %d", err);
+                }
+            }
+            else
+            {
+                LOG_ERR("Could not discover Uplink characteristic");
+            }
+        }
+
+        return BT_GATT_ITER_STOP;
+    }
+
+    if (BT_GATT_DISCOVER_PRIMARY == params->type)
+    {
+        struct bt_gatt_service_val *svc = attr->user_data;
+
+        if (0 == bt_uuid_cmp(&golioth_svc_uuid.uuid, svc->uuid))
+        {
+            params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
+            params->start_handle = attr->handle + 1;
+            params->end_handle = svc->end_handle;
+            params->uuid = NULL;
+
+            bt_gatt_discover(conn, params);
+
+            return BT_GATT_ITER_STOP;
+        }
+
+        return BT_GATT_ITER_CONTINUE;
+    }
+
+    if (BT_GATT_DISCOVER_CHARACTERISTIC == params->type)
+    {
+        struct bt_gatt_chrc *chrc = attr->user_data;
+
+        if (0 == bt_uuid_cmp(&golioth_info_chrc_uuid.uuid, chrc->uuid))
+        {
+            connected_nodes[conn_idx].attr_handles.info = chrc->value_handle;
+        }
+        else if (0 == bt_uuid_cmp(&golioth_downlink_chrc_uuid.uuid, chrc->uuid))
+        {
+            connected_nodes[conn_idx].attr_handles.downlink = chrc->value_handle;
+        }
+        else if (0 == bt_uuid_cmp(&golioth_uplink_chrc_uuid.uuid, chrc->uuid))
+        {
+            connected_nodes[conn_idx].attr_handles.uplink = chrc->value_handle;
+        }
+        else
+        {
+            LOG_WRN("Discovered Unknown characteristic: %d", chrc->value_handle);
+        }
+
+        return BT_GATT_ITER_CONTINUE;
+    }
+
+    return BT_GATT_ITER_STOP;
+}
+
+static struct bt_gatt_discover_params disc_params = {
+    .func = discover_func,
+};
+
 static void bt_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
@@ -230,11 +322,18 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
 
     net_buf_simple_init(pouch, 0);
 
-    err = bt_gatt_read(conn, &uplink_read_params);
+    uint8_t conn_idx = bt_conn_index(conn);
+    memset(&connected_nodes[conn_idx], 0, sizeof(connected_nodes[conn_idx]));
+
+    disc_params.type = BT_GATT_DISCOVER_PRIMARY;
+    disc_params.start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
+    disc_params.end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
+    disc_params.uuid = &golioth_svc_uuid.uuid;
+
+    err = bt_gatt_discover(conn, &disc_params);
     if (err)
     {
-        LOG_ERR("BT read request failed: %d", err);
-        return;
+        LOG_ERR("Failed to start discovery: %d", err);
     }
 }
 
