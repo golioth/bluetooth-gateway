@@ -6,6 +6,6 @@ project(gateway)
 
 target_sources(app PRIVATE
   src/bt.c
-  src/fifo.c
+  src/uplink.c
   src/main.c
 )

@@ -10,7 +10,7 @@
 #include <samples/common/net_connect.h>
 
 #include "bt.h"
-#include "fifo.h"
+#include "uplink.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
@@ -95,46 +95,16 @@ static inline void connect_to_cloud(void) {}
 
 int main(void)
 {
-    struct pouch_fifo_item *item;
     int err;
 
     connect_to_cloud();
+
+    pouch_uplink_init(client);
 
     err = bt_app_start();
     if (err)
     {
         return err;
-    }
-
-    while (true)
-    {
-        item = k_fifo_get(&pouches_fifo, K_FOREVER);
-        if (!item)
-        {
-            LOG_ERR("Failed to get FIFO msg");
-            continue;
-        }
-
-        LOG_INF("Sending pouch to cloud");
-        LOG_HEXDUMP_DBG(item->data, item->len, "pouch");
-
-        if (!IS_ENABLED(CONFIG_GATEWAY_CLOUD))
-        {
-            goto free_item;
-        }
-
-        enum golioth_status status =
-            golioth_gateway_uplink_sync(client, item->data, item->len, SYNC_TIMEOUT_S);
-        if (status != GOLIOTH_OK)
-        {
-            LOG_ERR("Failed to deliver pouch: %d", status);
-            goto free_item;
-        }
-
-        LOG_INF("Successfully sent");
-
-    free_item:
-        free(item);
     }
 
     return 0;

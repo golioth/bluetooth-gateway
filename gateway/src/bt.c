@@ -17,7 +17,7 @@
 #include <pouch/transport/ble_gatt/common/packetizer.h>
 
 #include "bt.h"
-#include "fifo.h"
+#include "uplink.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt);
@@ -56,11 +56,7 @@ struct golioth_node_info
         struct bt_gatt_discover_params discover_params;
         struct bt_gatt_read_params read_params;
     };
-    struct
-    {
-        struct net_buf_simple buf;
-        uint8_t buf_data[256];
-    } scratch;
+    struct pouch_uplink *uplink;
 };
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
@@ -159,16 +155,18 @@ static void start_scan(void)
 
 /* Callback for handling BLE GATT Uplink Response */
 static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
-                                 uint8_t err,
+                                 uint8_t read_err,
                                  struct bt_gatt_read_params *params,
                                  const void *data,
                                  uint16_t length)
 {
-    if (err)
+    if (read_err)
     {
-        LOG_ERR("Failed to read BLE GATT Uplink (err %d)", err);
+        LOG_ERR("Failed to read BLE GATT Uplink (err %d)", read_err);
         return BT_GATT_ITER_STOP;
     }
+
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
 
     bool is_first = false;
     bool is_last = false;
@@ -187,30 +185,17 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
         LOG_HEXDUMP_INF(data, length, "[READ] BLE GATT Uplink");
     }
 
-    struct net_buf_simple *buf = &connected_nodes[bt_conn_index(conn)].scratch.buf;
-
-    net_buf_simple_add_mem(buf, payload, payload_len);
+    int err = pouch_uplink_write(node->uplink, payload, payload_len, is_last);
+    if (err)
+    {
+        LOG_ERR("Failed to write to pouch (err %d)", err);
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return BT_GATT_ITER_STOP;
+    }
 
     if (is_last)
     {
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-
-        LOG_HEXDUMP_DBG(buf->data, buf->len, "pouch");
-
-        struct pouch_fifo_item *item;
-
-        item = malloc(sizeof(*item) + buf->len);
-        if (!item)
-        {
-            LOG_ERR("Failed to alloc new item");
-            return BT_GATT_ITER_STOP;
-        }
-
-        memcpy(item->data, buf->data, buf->len);
-        item->len = buf->len;
-
-        k_fifo_put(&pouches_fifo, item);
-
         return BT_GATT_ITER_STOP;
     }
 
@@ -320,13 +305,19 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
 
     LOG_INF("Connected: %s", addr);
 
-    uint8_t conn_idx = bt_conn_index(conn);
-    memset(&connected_nodes[conn_idx], 0, sizeof(connected_nodes[conn_idx]));
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
 
-    struct net_buf_simple *buf = &connected_nodes[conn_idx].scratch.buf;
-    net_buf_simple_init(buf, 0);
+    node->uplink = pouch_uplink_open();
+    if (node->uplink == NULL)
+    {
+        LOG_ERR("Failed to open pouch uplink");
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return;
+    }
 
-    struct bt_gatt_discover_params *discover_params = &connected_nodes[conn_idx].discover_params;
+    memset(&node->attr_handles, 0, sizeof(node->attr_handles));
+
+    struct bt_gatt_discover_params *discover_params = &node->discover_params;
 
     discover_params->func = discover_func;
     discover_params->type = BT_GATT_DISCOVER_PRIMARY;
@@ -346,6 +337,13 @@ static void bt_disconnected(struct bt_conn *conn, uint8_t reason)
     char addr[BT_ADDR_LE_STR_LEN];
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+    if (node->uplink)
+    {
+        pouch_uplink_close(node->uplink);
+        node->uplink = NULL;
+    }
 
     LOG_INF("Disconnected: %s, reason 0x%02x %s", addr, reason, bt_hci_err_to_str(reason));
 
