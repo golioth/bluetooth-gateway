@@ -1,10 +1,10 @@
 patches:
-  - path: golioth/0001-pouch-temp.patch
-    sha256sum: 4fe7fed81b3ac180975c531a8a5b4d0e18cc85308e91d6e9721cee43fa1d2545
+  - path: golioth/0001-Pouch-blockwise-uploads.patch
+    sha256sum: cf1aca8501bde63bb9e5bf74dbee078bdea068dc593256fa75720ad6ca428d17
     module: modules/lib/golioth-firmware-sdk
-    author: Daniel Mangum
-    email: georgedanielmangum@gmail.com
-    date: 2025-02-13
+    author: Trond Snekvik
+    email: trond@golioth.io
+    date: 2025-04-08
     apply-command: git am
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
     sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
