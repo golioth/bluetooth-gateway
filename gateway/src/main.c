@@ -10,6 +10,7 @@
 #include <samples/common/net_connect.h>
 
 #include "bt.h"
+#include "downlink.h"
 #include "uplink.h"
 
 #include <zephyr/logging/log.h>
@@ -100,6 +101,7 @@ int main(void)
     connect_to_cloud();
 
     pouch_uplink_init(client);
+    downlink_module_init(client);
 
     err = bt_app_start();
     if (err)

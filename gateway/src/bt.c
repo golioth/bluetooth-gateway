@@ -17,10 +17,13 @@
 #include <pouch/transport/ble_gatt/common/packetizer.h>
 
 #include "bt.h"
+#include "downlink.h"
 #include "uplink.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt);
+
+#define BT_ATT_OVERHEAD 3 /* opcode (1) + handle (2) */
 
 static struct bt_conn *default_conn;
 
@@ -55,8 +58,12 @@ struct golioth_node_info
     {
         struct bt_gatt_discover_params discover_params;
         struct bt_gatt_read_params read_params;
+        struct bt_gatt_write_params write_params;
     };
     struct pouch_uplink *uplink;
+    struct downlink_context *downlink_ctx;
+    void *downlink_scratch;
+    struct golioth_ble_gatt_packetizer *packetizer;
 };
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
@@ -153,6 +160,133 @@ static void start_scan(void)
     LOG_INF("Scanning successfully started");
 }
 
+static void write_response_cb(struct bt_conn *conn,
+                              uint8_t err,
+                              struct bt_gatt_write_params *params);
+
+static enum golioth_ble_gatt_packetizer_result downlink_packet_fill_cb(void *dst,
+                                                                       size_t *dst_len,
+                                                                       void *user_arg)
+{
+    bool last = false;
+
+    int ret = downlink_get_data(user_arg, dst, dst_len, &last);
+    if (-EAGAIN == ret)
+    {
+        LOG_DBG("Awaiting additional downlink data from cloud");
+        return GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+    }
+    if (0 > ret)
+    {
+        *dst_len = 0;
+        return GOLIOTH_BLE_GATT_PACKETIZER_ERROR;
+    }
+
+    return last ? GOLIOTH_BLE_GATT_PACKETIZER_NO_MORE_DATA : GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+}
+
+static int write_downlink_characteristic(struct bt_conn *conn)
+{
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+    struct bt_gatt_write_params *params = &node->write_params;
+    uint16_t downlink_handle = node->attr_handles.downlink;
+
+    size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
+    enum golioth_ble_gatt_packetizer_result ret =
+        golioth_ble_gatt_packetizer_get(node->packetizer, node->downlink_scratch, &len);
+
+    if (GOLIOTH_BLE_GATT_PACKETIZER_ERROR == ret)
+    {
+        ret = golioth_ble_gatt_packetizer_error(node->packetizer);
+        LOG_ERR("Error getting downlink data %d", ret);
+        return ret;
+    }
+
+    params->func = write_response_cb;
+    params->handle = downlink_handle;
+    params->offset = 0;
+    params->data = node->downlink_scratch;
+    params->length = len;
+
+    LOG_INF("Writing %d bytes to handle %d", params->length, params->handle);
+
+    int res = bt_gatt_write(conn, params);
+    if (0 > res)
+    {
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+    }
+
+    return 0;
+}
+
+static void write_response_cb(struct bt_conn *conn,
+                              uint8_t err,
+                              struct bt_gatt_write_params *params)
+{
+    LOG_INF("Received write response: %d", err);
+
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+
+    if (downlink_is_complete(node->downlink_ctx))
+    {
+        downlink_finish(node->downlink_ctx);
+        golioth_ble_gatt_packetizer_finish(node->packetizer);
+
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+    }
+    else
+    {
+        int ret = write_downlink_characteristic(conn);
+        if (0 != ret)
+        {
+            downlink_abort(node->downlink_ctx);
+            golioth_ble_gatt_packetizer_finish(node->packetizer);
+
+            bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        }
+    }
+}
+
+static void downlink_data_available(void *arg)
+{
+    struct bt_conn *conn = arg;
+
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+
+    int ret = write_downlink_characteristic(conn);
+    if (0 != ret)
+    {
+        downlink_abort(node->downlink_ctx);
+        golioth_ble_gatt_packetizer_finish(node->packetizer);
+
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+    }
+}
+
+static void start_downlink(struct bt_conn *conn)
+{
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+
+    if (0 == node->attr_handles.downlink)
+    {
+        LOG_ERR("Downlink characteristic undiscovered");
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return;
+    }
+
+    node->downlink_scratch = malloc(bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD);
+    if (NULL == node->downlink_scratch)
+    {
+        LOG_ERR("Could not allocate space for downlink scratch buffer");
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return;
+    }
+
+    node->downlink_ctx = downlink_start(NULL, downlink_data_available, conn);
+    node->packetizer =
+        golioth_ble_gatt_packetizer_start_callback(downlink_packet_fill_cb, node->downlink_ctx);
+}
+
 /* Callback for handling BLE GATT Uplink Response */
 static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
                                  uint8_t read_err,
@@ -195,7 +329,8 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
 
     if (is_last)
     {
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        start_downlink(conn);
+
         return BT_GATT_ITER_STOP;
     }
 
@@ -343,6 +478,11 @@ static void bt_disconnected(struct bt_conn *conn, uint8_t reason)
     {
         pouch_uplink_close(node->uplink);
         node->uplink = NULL;
+    }
+    if (node->downlink_scratch)
+    {
+        free(node->downlink_scratch);
+        node->downlink_scratch = NULL;
     }
 
     LOG_INF("Disconnected: %s, reason 0x%02x %s", addr, reason, bt_hci_err_to_str(reason));

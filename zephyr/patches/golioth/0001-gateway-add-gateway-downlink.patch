@@ -1,0 +1,126 @@
+From b0ca206bea9feb6e622d2b0523bf96bdc0236092 Mon Sep 17 00:00:00 2001
+From: Sam Friedman <sam@golioth.io>
+Date: Mon, 5 May 2025 16:10:16 -0400
+Subject: [PATCH] gateway: add downlink
+
+Signed-off-by: Sam Friedman <sam@golioth.io>
+---
+ include/golioth/gateway.h | 15 +++++++++
+ src/gateway.c             | 64 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 78 insertions(+), 1 deletion(-)
+
+diff --git a/include/golioth/gateway.h b/include/golioth/gateway.h
+index 1f00e15..5e67808 100644
+--- a/include/golioth/gateway.h
++++ b/include/golioth/gateway.h
+@@ -53,6 +53,21 @@ enum golioth_status golioth_gateway_uplink_block(struct blockwise_transfer *ctx,
+ /// @param ctx The uplink context to finish, returned from \ref golioth_gateway_uplink_block
+ void golioth_gateway_uplink_finish(struct blockwise_transfer *ctx);
+ 
++typedef enum golioth_status (*gateway_downlink_block_cb)(const uint8_t *data,
++                                                         size_t len,
++                                                         bool is_last,
++                                                         void *arg);
++
++typedef void (*gateway_downlink_end_cb)(enum golioth_status status,
++                                        const struct golioth_coap_rsp_code *coap_rsp_code,
++                                        void *arg);
++
++enum golioth_status golioth_gateway_downlink_get(struct golioth_client *client,
++                                                 const char *device_id,
++                                                 gateway_downlink_block_cb block_cb,
++                                                 gateway_downlink_end_cb end_cb,
++                                                 void *arg);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/gateway.c b/src/gateway.c
+index ca0adfd..85bd608 100644
+--- a/src/gateway.c
++++ b/src/gateway.c
+@@ -5,13 +5,20 @@
+  */
+ 
+ #include <golioth/gateway.h>
++#include "coap_client.h"
+ #include "coap_blockwise.h"
+ 
+ #if defined(CONFIG_GOLIOTH_GATEWAY)
+ 
++#define GATEWAY_URI ".pouch"
++#define DOWNLINK_URI GATEWAY_URI
++
+ struct blockwise_transfer *golioth_gateway_uplink_start(struct golioth_client *client)
+ {
+-    return golioth_blockwise_upload_start(client, ".pouch", "", GOLIOTH_CONTENT_TYPE_OCTET_STREAM);
++    return golioth_blockwise_upload_start(client,
++                                          GATEWAY_URI,
++                                          "",
++                                          GOLIOTH_CONTENT_TYPE_OCTET_STREAM);
+ }
+ 
+ enum golioth_status golioth_gateway_uplink_block(struct blockwise_transfer *ctx,
+@@ -38,4 +45,59 @@ void golioth_gateway_uplink_finish(struct blockwise_transfer *ctx)
+     golioth_blockwise_upload_finish(ctx);
+ }
+ 
++struct gateway_downlink_ctx
++{
++    gateway_downlink_block_cb block_cb;
++    gateway_downlink_end_cb end_cb;
++    void *arg;
++};
++
++static enum golioth_status downlink_block_cb_wrapper(uint32_t block_idx,
++                                                     const uint8_t *block_buffer,
++                                                     size_t block_buffer_len,
++                                                     bool is_last,
++                                                     size_t negotiated_block_size,
++                                                     void *callback_arg)
++{
++    struct gateway_downlink_ctx *ctx = callback_arg;
++
++    return ctx->block_cb(block_buffer, block_buffer_len, is_last, ctx->arg);
++}
++
++static void downlink_end_cb_wrapper(enum golioth_status status,
++                                    const struct golioth_coap_rsp_code *coap_rsp_code,
++                                    const char *path,
++                                    uint32_t block_idx,
++                                    void *arg)
++{
++    struct gateway_downlink_ctx *ctx = arg;
++
++    ctx->end_cb(status, coap_rsp_code, ctx->arg);
++
++    golioth_sys_free(ctx);
++}
++
++enum golioth_status golioth_gateway_downlink_get(struct golioth_client *client,
++                                                 const char *device_id,
++                                                 gateway_downlink_block_cb block_cb,
++                                                 gateway_downlink_end_cb end_cb,
++                                                 void *arg)
++
++{
++    struct gateway_downlink_ctx *ctx = golioth_sys_malloc(sizeof(*ctx));
++
++    ctx->block_cb = block_cb;
++    ctx->end_cb = end_cb;
++    ctx->arg = arg;
++
++    return golioth_blockwise_get(client,
++                                 DOWNLINK_URI,
++                                 "",
++                                 GOLIOTH_CONTENT_TYPE_OCTET_STREAM,
++                                 0,
++                                 downlink_block_cb_wrapper,
++                                 downlink_end_cb_wrapper,
++                                 ctx);
++}
++
+ #endif  // CONFIG_GOLIOTH_GATEWAY
+-- 
+2.39.3 (Apple Git-146)
+

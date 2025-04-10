@@ -5,7 +5,9 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(gateway)
 
 target_sources(app PRIVATE
+  src/block.c
   src/bt.c
+  src/downlink.c
   src/uplink.c
   src/main.c
 )
