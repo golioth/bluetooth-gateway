@@ -1,4 +1,11 @@
 patches:
+  - path: golioth/0001-gateway-add-gateway-downlink.patch
+    sha256sum: bfb0fe76cc7850ba0e5a15c7311fce565420c0d785fd0e8fd92c227373e50517
+    module: modules/lib/golioth-firmware-sdk
+    author: Sam Friedman
+    email: sam@golioth.io
+    date: 2025-04-14
+    apply-command: git am
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
     sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
     module: zephyr
