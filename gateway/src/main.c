@@ -4,12 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/bluetooth/bluetooth.h>
+
 #include <golioth/client.h>
 #include <golioth/gateway.h>
 #include <samples/common/sample_credentials.h>
 #include <samples/common/net_connect.h>
 
-#include "bt.h"
+#include <gateway/bt/scan.h>
+
 #include "downlink.h"
 #include "uplink.h"
 
@@ -103,11 +106,16 @@ int main(void)
     pouch_uplink_init(client);
     downlink_module_init(client);
 
-    err = bt_app_start();
+    err = bt_enable(NULL);
     if (err)
     {
+        LOG_ERR("Bluetooth init failed (err %d)", err);
         return err;
     }
+
+    LOG_INF("Bluetooth initialized");
+
+    gateway_scan_start();
 
     return 0;
 }
