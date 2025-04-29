@@ -8,7 +8,7 @@ manifest:
       url: https://github.com/golioth/golioth-firmware-sdk.git
 
     - name: nrf
-      revision: 174e2cfebbee35f9b0347d20d6fb7ec3f8f99cbd
+      revision: v3.0.0
       url: http://github.com/nrfconnect/sdk-nrf
       import:
         name-allowlist:
