@@ -289,6 +289,31 @@ static uint8_t discover_func(struct bt_conn *conn,
     return BT_GATT_ITER_STOP;
 }
 
+static void mtu_exchange_cb(struct bt_conn *conn,
+                            uint8_t err,
+                            struct bt_gatt_exchange_params *params)
+{
+    LOG_INF("MTU exchange %s (%u)", err == 0U ? "successful" : "failed", bt_gatt_get_mtu(conn));
+}
+
+static struct bt_gatt_exchange_params mtu_exchange_params = {.func = mtu_exchange_cb};
+
+static int mtu_exchange(struct bt_conn *conn)
+{
+    int err;
+
+    LOG_INF("Current MTU = %u", bt_gatt_get_mtu(conn));
+
+    LOG_INF("Exchange MTU...");
+    err = bt_gatt_exchange_mtu(conn, &mtu_exchange_params);
+    if (err)
+    {
+        LOG_ERR("MTU exchange failed (err %d)", err);
+    }
+
+    return err;
+}
+
 static void bt_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
@@ -305,8 +330,9 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
 
     LOG_INF("Connected: %s", addr);
 
-    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
+    mtu_exchange(conn);
 
+    struct golioth_node_info *node = &connected_nodes[bt_conn_index(conn)];
     node->uplink = pouch_uplink_open();
     if (node->uplink == NULL)
     {
