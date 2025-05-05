@@ -232,9 +232,9 @@ struct pouch_uplink *pouch_uplink_open(void)
 
 void pouch_uplink_close(struct pouch_uplink *uplink)
 {
-    atomic_set_bit(&uplink->flags, POUCH_UPLINK_CLOSED);
+    bool closed = atomic_test_and_set_bit(&uplink->flags, POUCH_UPLINK_CLOSED);
 
-    if (uplink->wblock != NULL)
+    if (!closed && uplink->wblock != NULL)
     {
         submit_block(uplink);
     }

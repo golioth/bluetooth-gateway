@@ -329,6 +329,9 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
 
     if (is_last)
     {
+        pouch_uplink_close(node->uplink);
+        node->uplink = NULL;
+
         start_downlink(conn);
 
         return BT_GATT_ITER_STOP;
