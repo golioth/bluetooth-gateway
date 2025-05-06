@@ -1,0 +1,26 @@
+From 424295bb21f08cca6bcb9d086489061bbadc2d4b Mon Sep 17 00:00:00 2001
+From: Marcin Niestroj <m.niestroj@emb.dev>
+Date: Tue, 6 May 2025 08:37:54 +0200
+Subject: [PATCH] dev: examples: ble_gatt: use 4kB pouch size
+
+This allows to pack large data items into pouch (like >2kB JSON
+payloads).
+
+Signed-off-by: Marcin Niestroj <m.niestroj@emb.dev>
+---
+ examples/ble_gatt/prj.conf | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/examples/ble_gatt/prj.conf b/examples/ble_gatt/prj.conf
+index 84577e3..f08787b 100644
+--- a/examples/ble_gatt/prj.conf
++++ b/examples/ble_gatt/prj.conf
+@@ -15,3 +15,5 @@ CONFIG_SHELL=y
+ 
+ CONFIG_POUCH=y
+ CONFIG_POUCH_TRANSPORT_BLE_GATT=y
++
++CONFIG_POUCH_BLOCK_SIZE=4096
+-- 
+2.49.0
+

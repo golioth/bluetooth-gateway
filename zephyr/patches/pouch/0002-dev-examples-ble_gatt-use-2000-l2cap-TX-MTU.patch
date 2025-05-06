@@ -1,0 +1,32 @@
+From 087ff9ad65d87fc483c174bc3cca2a51531e21dc Mon Sep 17 00:00:00 2001
+From: Marcin Niestroj <m.niestroj@emb.dev>
+Date: Tue, 6 May 2025 08:37:17 +0200
+Subject: [PATCH] dev: examples: ble_gatt: use 2000 l2cap TX MTU
+
+This is the largest supported value (as restricted by range in Kconfig).
+
+Signed-off-by: Marcin Niestroj <m.niestroj@emb.dev>
+---
+ examples/ble_gatt/prj.conf | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/examples/ble_gatt/prj.conf b/examples/ble_gatt/prj.conf
+index 4d2955c..84577e3 100644
+--- a/examples/ble_gatt/prj.conf
++++ b/examples/ble_gatt/prj.conf
+@@ -5,9 +5,9 @@ CONFIG_BT_PERIPHERAL=y
+ CONFIG_BT_DEVICE_NAME="Golioth"
+ CONFIG_BT_DEVICE_APPEARANCE=768
+ 
+-CONFIG_BT_BUF_ACL_TX_SIZE=128
+-CONFIG_BT_BUF_ACL_RX_SIZE=128
+-CONFIG_BT_L2CAP_TX_MTU=128
++CONFIG_BT_BUF_ACL_TX_SIZE=2004
++CONFIG_BT_BUF_ACL_RX_SIZE=2004
++CONFIG_BT_L2CAP_TX_MTU=2000
+ 
+ CONFIG_LOG=y
+ CONFIG_ZCBOR=y
+-- 
+2.49.0
+

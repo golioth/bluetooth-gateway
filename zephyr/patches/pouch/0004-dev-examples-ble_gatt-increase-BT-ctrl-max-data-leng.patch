@@ -1,0 +1,28 @@
+From d00f1abcf40c98bb21523d2edab6d310a89a2912 Mon Sep 17 00:00:00 2001
+From: Marcin Niestroj <m.niestroj@emb.dev>
+Date: Tue, 6 May 2025 08:38:43 +0200
+Subject: [PATCH] dev: examples: ble_gatt: increase BT ctrl max data length
+
+Larger data length allows to more efficiently handle BT packets on the
+low level.
+
+Signed-off-by: Marcin Niestroj <m.niestroj@emb.dev>
+---
+ examples/ble_gatt/prj.conf | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/examples/ble_gatt/prj.conf b/examples/ble_gatt/prj.conf
+index f08787b..40827c3 100644
+--- a/examples/ble_gatt/prj.conf
++++ b/examples/ble_gatt/prj.conf
+@@ -8,6 +8,7 @@ CONFIG_BT_DEVICE_APPEARANCE=768
+ CONFIG_BT_BUF_ACL_TX_SIZE=2004
+ CONFIG_BT_BUF_ACL_RX_SIZE=2004
+ CONFIG_BT_L2CAP_TX_MTU=2000
++CONFIG_BT_CTLR_DATA_LENGTH_MAX=251
+ 
+ CONFIG_LOG=y
+ CONFIG_ZCBOR=y
+-- 
+2.49.0
+
