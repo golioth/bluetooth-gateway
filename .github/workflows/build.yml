@@ -101,7 +101,7 @@ jobs:
         run: |
           west config manifest.file west-thingy91x-controller.yml
           west update --narrow -o=--depth=1
-          west forall zephyr -c "git am $GITHUB_WORKSPACE/bluetooth-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
+          west patch apply
 
       - name: Build Thingy:91 X Controller
         run: |

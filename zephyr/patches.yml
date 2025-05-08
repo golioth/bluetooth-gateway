@@ -1,4 +1,13 @@
 patches:
+  - path: thingy91x-controller/zephyr/0001-scripts-west_commands-Support-out-of-tree-runners.patch
+    sha256sum: 14cb30fb1260a84cc88bf078915cc55fb771a06958e8a69967a5099c57a41494
+    module: zephyr
+    author: Pieter De Gendt
+    email: pieter.degendt@basalte.be
+    date: 2024-12-19
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-thingy91x-controller.yml" ]; then git am $@;
+      fi' --
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
     sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
     module: zephyr
