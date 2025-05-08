@@ -4,13 +4,10 @@ manifest:
   projects:
     - name: golioth
       path: modules/lib/golioth-firmware-sdk
-      revision: 574656857cb533679dfd069e12867e800873e50a
+      revision: v0.18.0
       url: https://github.com/golioth/golioth-firmware-sdk.git
-
-    - name: nrf
-      revision: v3.0.0
-      url: http://github.com/nrfconnect/sdk-nrf
       import:
+        file: west-ncs.yml
         name-allowlist:
           - cmsis
           - hal_nordic
