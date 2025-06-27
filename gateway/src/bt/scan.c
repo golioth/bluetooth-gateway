@@ -8,20 +8,29 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 
+#include <pouch/transport/ble_gatt/common/types.h>
 #include <pouch/transport/ble_gatt/common/uuids.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(scan);
 
-struct tf_svc_adv_data
+static inline bool version_is_compatible(const struct golioth_ble_gatt_adv_data *adv_data)
 {
-    uint8_t sync_request;
-} __packed;
+    uint8_t self_ver = adv_data->version
+        & GOLIOTH_BLE_GATT_ADV_VERSION_SELF_MASK >> GOLIOTH_BLE_GATT_ADV_VERSION_SELF_SHIFT;
+
+    return GOLIOTH_BLE_GATT_VERSION == self_ver;
+}
+
+static inline bool sync_requested(const struct golioth_ble_gatt_adv_data *adv_data)
+{
+    return (0 != adv_data->flags & GOLIOTH_BLE_GATT_ADV_FLAG_SYNC_REQUEST);
+}
 
 struct tf_data
 {
     bool is_tf;
-    struct tf_svc_adv_data adv_data;
+    struct golioth_ble_gatt_adv_data adv_data;
 };
 
 static struct bt_conn *default_conn;
@@ -36,7 +45,7 @@ static bool data_cb(struct bt_data *data, void *user_data)
     {
         case BT_DATA_SVC_DATA128:
         {
-            struct tf_svc_adv_data *adv_data;
+            struct golioth_ble_gatt_adv_data *adv_data;
 
             if (data->data_len >= sizeof(golioth_svc_uuid.val) + sizeof(*adv_data)
                 && memcmp(golioth_svc_uuid.val, data->data, sizeof(golioth_svc_uuid.val)) == 0)
@@ -45,9 +54,7 @@ static bool data_cb(struct bt_data *data, void *user_data)
 
                 tf->is_tf = true;
                 tf->adv_data = *adv_data;
-            }
-            else
-            {
+
                 return false;
             }
             return true;
@@ -78,9 +85,12 @@ static void device_found(const bt_addr_le_t *addr,
     LOG_DBG("Device found: %s (RSSI %d)", addr_str, rssi);
 
     bt_data_parse(ad, data_cb, &tf);
-    LOG_DBG("is_tf=%d sync_request=%d", (int) tf.is_tf, (int) tf.adv_data.sync_request);
+    LOG_DBG("is_tf=%d version=0x%0x flags=0%0x",
+            (int) tf.is_tf,
+            tf.adv_data.version,
+            tf.adv_data.flags);
 
-    if (tf.is_tf && tf.adv_data.sync_request)
+    if (tf.is_tf && version_is_compatible(&tf.adv_data) && sync_requested(&tf.adv_data))
     {
         err = bt_le_scan_stop();
         if (err)
