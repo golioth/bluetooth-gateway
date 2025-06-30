@@ -32,10 +32,10 @@ jobs:
 
       - name: Install pip packages
         run: |
-          pip3 install \
+          uv pip install \
             -r zephyr/scripts/requirements-base.txt
 
-          pip3 install            \
+          uv pip install            \
             cryptography==41.0.7  \
             pyasn1                \
             pyyaml                \
