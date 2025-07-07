@@ -5,11 +5,12 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/dhcpv4.h>
 
 #include <golioth/client.h>
 #include <golioth/gateway.h>
 #include <samples/common/sample_credentials.h>
-#include <samples/common/net_connect.h>
 
 #include <gateway/bt/scan.h>
 
@@ -84,6 +85,9 @@ static void connect_to_cloud(void)
     LOG_INF("Connecting to LTE, this may take some time...");
     lte_lc_connect_async(lte_handler);
 #else
+#if defined(CONFIG_NET_L2_ETHERNET) && defined(CONFIG_NET_DHCPV4)
+    net_dhcpv4_start(net_if_get_default());
+#endif
     connect_golioth_client();
 #endif
 
