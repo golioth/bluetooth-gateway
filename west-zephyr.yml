@@ -11,6 +11,7 @@ manifest:
         name-allowlist:
           - cmsis
           - hal_nordic
+          - hal_nxp
           - littlefs
           - mbedtls
           - mcuboot
