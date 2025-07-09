@@ -19,7 +19,6 @@ LOG_MODULE_REGISTER(downlink);
 
 struct downlink_context
 {
-    const char *device_id;
     downlink_data_available_cb data_available_cb;
     void *cb_arg;
     struct k_fifo block_queue;
@@ -42,10 +41,7 @@ static void flush_block_queue(struct k_fifo *queue)
     }
 }
 
-static enum golioth_status downlink_block_cb(const uint8_t *data,
-                                             size_t len,
-                                             bool is_last,
-                                             void *arg)
+enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_last, void *arg)
 {
     struct downlink_context *downlink = arg;
 
@@ -79,9 +75,9 @@ static enum golioth_status downlink_block_cb(const uint8_t *data,
     return GOLIOTH_OK;
 }
 
-static void downlink_end_cb(enum golioth_status status,
-                            const struct golioth_coap_rsp_code *coap_rsp_code,
-                            void *arg)
+void downlink_end_cb(enum golioth_status status,
+                     const struct golioth_coap_rsp_code *coap_rsp_code,
+                     void *arg)
 {
     struct downlink_context *downlink = arg;
 
@@ -100,9 +96,7 @@ static void downlink_end_cb(enum golioth_status status,
     }
 }
 
-struct downlink_context *downlink_start(const char *device_id,
-                                        downlink_data_available_cb data_available_cb,
-                                        void *cb_arg)
+struct downlink_context *downlink_init(downlink_data_available_cb data_available_cb, void *cb_arg)
 {
     LOG_INF("Starting downlink");
 
@@ -110,7 +104,6 @@ struct downlink_context *downlink_start(const char *device_id,
 
     if (NULL != downlink)
     {
-        downlink->device_id = device_id;
         downlink->data_available_cb = data_available_cb;
         downlink->cb_arg = cb_arg;
         downlink->current_block = NULL;
@@ -118,21 +111,7 @@ struct downlink_context *downlink_start(const char *device_id,
         downlink->complete = false;
         downlink->aborted = false;
         k_fifo_init(&downlink->block_queue);
-
-        enum golioth_status ret = golioth_gateway_downlink_get(_client,
-                                                               downlink->device_id,
-                                                               downlink_block_cb,
-                                                               downlink_end_cb,
-                                                               downlink);
-
-        if (GOLIOTH_OK != ret && GOLIOTH_ERR_NACK != ret)
-        {
-            LOG_ERR("Downlink GET failed: %d", ret);
-            downlink->complete = true;
-            downlink->data_available_cb(downlink->cb_arg);
-        }
     }
-
 
     return downlink;
 }

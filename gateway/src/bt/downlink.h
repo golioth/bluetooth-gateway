@@ -4,5 +4,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-void gateway_downlink_start(struct bt_conn *conn);
+struct downlink_context *gateway_downlink_start(struct bt_conn *conn);
 void gateway_downlink_cleanup(struct bt_conn *conn);

@@ -66,8 +66,6 @@ static uint8_t tf_uplink_read_cb(struct bt_conn *conn,
         pouch_uplink_close(node->uplink);
         node->uplink = NULL;
 
-        gateway_downlink_start(conn);
-
         return BT_GATT_ITER_STOP;
     }
 
@@ -85,7 +83,9 @@ void gateway_uplink_start(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
 
-    node->uplink = pouch_uplink_open();
+    struct downlink_context *downlink = gateway_downlink_start(conn);
+
+    node->uplink = pouch_uplink_open(downlink);
     if (node->uplink == NULL)
     {
         LOG_ERR("Failed to open pouch uplink");
