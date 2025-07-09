@@ -1,6 +1,6 @@
 patches:
   - path: golioth/0001-gateway-add-gateway-downlink.patch
-    sha256sum: bfb0fe76cc7850ba0e5a15c7311fce565420c0d785fd0e8fd92c227373e50517
+    sha256sum: 011bbb3b9b029c0164936f6c52930fedb543404453bbfdb7427542cdae4882d6
     module: modules/lib/golioth-firmware-sdk
     author: Sam Friedman
     email: sam@golioth.io

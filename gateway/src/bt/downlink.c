@@ -124,28 +124,28 @@ static void downlink_data_available(void *arg)
     }
 }
 
-void gateway_downlink_start(struct bt_conn *conn)
+struct downlink_context *gateway_downlink_start(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
 
     if (0 == node->attr_handles.downlink)
     {
         LOG_ERR("Downlink characteristic undiscovered");
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-        return;
+        return NULL;
     }
 
     node->downlink_scratch = malloc(bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD);
     if (NULL == node->downlink_scratch)
     {
         LOG_ERR("Could not allocate space for downlink scratch buffer");
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-        return;
+        return NULL;
     }
 
-    node->downlink_ctx = downlink_start(NULL, downlink_data_available, conn);
+    node->downlink_ctx = downlink_init(downlink_data_available, conn);
     node->packetizer =
         golioth_ble_gatt_packetizer_start_callback(downlink_packet_fill_cb, node->downlink_ctx);
+
+    return node->downlink_ctx;
 }
 
 void gateway_downlink_cleanup(struct bt_conn *conn)

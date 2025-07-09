@@ -12,6 +12,7 @@
 #include <golioth/stream.h>
 
 #include "uplink.h"
+#include "downlink.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(uplink);
@@ -31,7 +32,7 @@ struct pouch_block
 
 struct pouch_uplink
 {
-    struct blockwise_transfer *session;
+    struct gateway_uplink *session;
     uint32_t block_idx;
     atomic_t flags;
     struct pouch_block *wblock;
@@ -198,7 +199,7 @@ void pouch_uplink_init(struct golioth_client *c)
     client = c;
 }
 
-struct pouch_uplink *pouch_uplink_open(void)
+struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
 {
     struct pouch_uplink *uplink = malloc(sizeof(struct pouch_uplink));
     if (uplink == NULL)
@@ -213,7 +214,8 @@ struct pouch_uplink *pouch_uplink_open(void)
         return NULL;
     }
 
-    uplink->session = golioth_gateway_uplink_start(client);
+    uplink->session =
+        golioth_gateway_uplink_start(client, downlink_block_cb, downlink_end_cb, downlink);
     if (uplink->session == NULL)
     {
         LOG_ERR("Failed to start blockwise upload");
