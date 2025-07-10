@@ -134,6 +134,12 @@ struct downlink_context *gateway_downlink_start(struct bt_conn *conn)
         return NULL;
     }
 
+    if (!IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    {
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return NULL;
+    }
+
     node->downlink_scratch = malloc(bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD);
     if (NULL == node->downlink_scratch)
     {
