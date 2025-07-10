@@ -24,7 +24,7 @@ static inline bool version_is_compatible(const struct golioth_ble_gatt_adv_data 
 
 static inline bool sync_requested(const struct golioth_ble_gatt_adv_data *adv_data)
 {
-    return (0 != adv_data->flags & GOLIOTH_BLE_GATT_ADV_FLAG_SYNC_REQUEST);
+    return (adv_data->flags & GOLIOTH_BLE_GATT_ADV_FLAG_SYNC_REQUEST);
 }
 
 struct tf_data
