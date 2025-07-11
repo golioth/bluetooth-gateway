@@ -52,7 +52,7 @@ static int write_downlink_characteristic(struct bt_conn *conn)
     struct bt_gatt_write_params *params = &node->write_params;
     uint16_t downlink_handle = node->attr_handles.downlink;
 
-    size_t len = bt_gatt_get_mtu(conn) - 3;
+    size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
         golioth_ble_gatt_packetizer_get(node->packetizer, node->downlink_scratch, &len);
 
