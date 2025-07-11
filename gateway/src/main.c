@@ -14,6 +14,7 @@
 
 #include <gateway/bt/scan.h>
 
+#include "cert.h"
 #include "downlink.h"
 #include "uplink.h"
 
@@ -107,6 +108,7 @@ int main(void)
 
     connect_to_cloud();
 
+    cert_module_on_connected(client);
     pouch_uplink_init(client);
     downlink_module_init(client);
 
@@ -120,6 +122,14 @@ int main(void)
     LOG_INF("Bluetooth initialized");
 
     gateway_scan_start();
+
+#ifdef CONFIG_GATEWAY_CLOUD
+    while (true)
+    {
+        k_sem_take(&connected, K_FOREVER);
+        cert_module_on_connected(client);
+    }
+#endif
 
     return 0;
 }

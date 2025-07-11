@@ -15,6 +15,7 @@ struct golioth_node_info
         uint16_t info;
         uint16_t downlink;
         uint16_t uplink;
+        uint16_t server_cert;
     } attr_handles;
     union
     {
@@ -24,6 +25,8 @@ struct golioth_node_info
     };
     struct downlink_context *downlink_ctx;
     void *downlink_scratch;
+    void *server_cert_scratch;
     struct golioth_ble_gatt_packetizer *packetizer;
     struct pouch_uplink *uplink;
+    struct server_cert_context *server_cert_ctx;
 };
