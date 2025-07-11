@@ -14,6 +14,7 @@
 
 #include <gateway/bt/scan.h>
 
+#include "cert.h"
 #include "downlink.h"
 #include "types.h"
 #include "uplink.h"
@@ -28,7 +29,8 @@ static const struct bt_uuid_128 golioth_downlink_chrc_uuid =
     BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DOWNLINK_CHRC_VAL);
 static const struct bt_uuid_128 golioth_uplink_chrc_uuid =
     BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL);
-
+static const struct bt_uuid_128 golioth_server_cert_chrc_uuid =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SERVER_CERT_CHRC_VAL);
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
 
@@ -42,14 +44,14 @@ static uint8_t discover_func(struct bt_conn *conn,
     {
         if (BT_GATT_DISCOVER_CHARACTERISTIC == params->type)
         {
-            uint16_t uplink_handle = connected_nodes[conn_idx].attr_handles.uplink;
-            if (0 != uplink_handle)
+            uint16_t server_cert_handle = connected_nodes[conn_idx].attr_handles.server_cert;
+            if (0 != server_cert_handle)
             {
-                gateway_uplink_start(conn);
+                gateway_cert_exchange_start(conn);
             }
             else
             {
-                LOG_ERR("Could not discover Uplink characteristic");
+                LOG_ERR("Could not discover %s characteristic", "server cert");
             }
         }
 
@@ -90,6 +92,10 @@ static uint8_t discover_func(struct bt_conn *conn,
         else if (0 == bt_uuid_cmp(&golioth_uplink_chrc_uuid.uuid, chrc->uuid))
         {
             connected_nodes[conn_idx].attr_handles.uplink = chrc->value_handle;
+        }
+        else if (0 == bt_uuid_cmp(&golioth_server_cert_chrc_uuid.uuid, chrc->uuid))
+        {
+            connected_nodes[conn_idx].attr_handles.server_cert = chrc->value_handle;
         }
         else
         {
