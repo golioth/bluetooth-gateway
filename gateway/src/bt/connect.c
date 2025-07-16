@@ -31,6 +31,8 @@ static const struct bt_uuid_128 golioth_uplink_chrc_uuid =
     BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL);
 static const struct bt_uuid_128 golioth_server_cert_chrc_uuid =
     BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SERVER_CERT_CHRC_VAL);
+static const struct bt_uuid_128 golioth_device_cert_chrc_uuid =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DEVICE_CERT_CHRC_VAL);
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
 
@@ -92,6 +94,10 @@ static uint8_t discover_func(struct bt_conn *conn,
         else if (0 == bt_uuid_cmp(&golioth_uplink_chrc_uuid.uuid, chrc->uuid))
         {
             connected_nodes[conn_idx].attr_handles.uplink = chrc->value_handle;
+        }
+        else if (0 == bt_uuid_cmp(&golioth_device_cert_chrc_uuid.uuid, chrc->uuid))
+        {
+            connected_nodes[conn_idx].attr_handles.device_cert = chrc->value_handle;
         }
         else if (0 == bt_uuid_cmp(&golioth_server_cert_chrc_uuid.uuid, chrc->uuid))
         {
