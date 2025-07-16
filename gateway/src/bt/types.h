@@ -16,6 +16,7 @@ struct golioth_node_info
         uint16_t downlink;
         uint16_t uplink;
         uint16_t server_cert;
+        uint16_t device_cert;
     } attr_handles;
     union
     {
