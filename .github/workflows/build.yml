@@ -89,7 +89,7 @@ jobs:
             -b $TARGET \
             bluetooth-gateway/${{ matrix.app }} \
             ${{ matrix.sysbuild && '--sysbuild' || '--no-sysbuild' }} \
-            -- ${{ matrix.extra_args }}
+            -- -DCONFIG_COMPILER_WARNINGS_AS_ERRORS=y ${{ matrix.extra_args }}
 
           echo "ARTIFACT_TARGET=${TARGET//\//-}" >> $GITHUB_OUTPUT
 
