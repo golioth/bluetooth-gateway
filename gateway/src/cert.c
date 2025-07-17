@@ -102,6 +102,17 @@ void cert_module_on_connected(struct golioth_client *client)
 
         server_crt_update(len);
     }
+    else if (IS_ENABLED(CONFIG_GATEWAY_SERVER_CERT_BUILTIN))
+    {
+        static const uint8_t server_crt_offline[] = {
+#include "server.der.inc"
+        };
+
+        memcpy(server_crt_buf, server_crt_offline, sizeof(server_crt_offline));
+        server_crt_update(sizeof(server_crt_offline));
+
+        LOG_INF("Loaded builtin server cert");
+    }
 
     LOG_HEXDUMP_DBG(server_crt_buf, atomic_get(&server_crt_len), "Server certificate");
 }

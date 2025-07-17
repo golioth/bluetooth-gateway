@@ -18,3 +18,7 @@ target_sources(app PRIVATE
   src/uplink.c
   src/main.c
 )
+
+generate_inc_file_for_target(app
+  src/server.der
+  ${ZEPHYR_BINARY_DIR}/include/generated/server.der.inc)
