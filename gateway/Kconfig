@@ -29,4 +29,8 @@ config GATEWAY_SERVER_CERT_MAX_LEN
     help
       Maximum length of server certificate.
 
+config GATEWAY_SERVER_CERT_BUILTIN
+    bool
+    default y if !GATEWAY_CLOUD
+
 source "Kconfig.zephyr"
