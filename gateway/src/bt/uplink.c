@@ -103,6 +103,7 @@ void gateway_uplink_start(struct bt_conn *conn)
     if (err)
     {
         LOG_ERR("BT read request failed: %d", err);
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
     }
 }
 
