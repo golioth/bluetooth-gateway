@@ -46,7 +46,10 @@ static void process_uplink(struct pouch_uplink *uplink);
 
 static void cleanup_uplink(struct pouch_uplink *uplink)
 {
-    golioth_gateway_uplink_finish(uplink->session);
+    if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    {
+        golioth_gateway_uplink_finish(uplink->session);
+    }
 
     sys_snode_t *n;
     while ((n = sys_slist_get(&uplink->queue)) != NULL)
@@ -115,6 +118,11 @@ static void process_uplink(struct pouch_uplink *uplink)
     uplink->rblock = CONTAINER_OF(n, struct pouch_block, node);
 
     LOG_DBG("Processing block %zu of size %zu", uplink->block_idx, uplink->rblock->len);
+
+    if (!IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    {
+        return;
+    }
 
     status = golioth_gateway_uplink_block(uplink->session,
                                           uplink->block_idx++,
@@ -214,14 +222,17 @@ struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
         return NULL;
     }
 
-    uplink->session =
-        golioth_gateway_uplink_start(client, downlink_block_cb, downlink_end_cb, downlink);
-    if (uplink->session == NULL)
+    if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
     {
-        LOG_ERR("Failed to start blockwise upload");
-        free(uplink->wblock);
-        free(uplink);
-        return NULL;
+        uplink->session =
+            golioth_gateway_uplink_start(client, downlink_block_cb, downlink_end_cb, downlink);
+        if (uplink->session == NULL)
+        {
+            LOG_ERR("Failed to start blockwise upload");
+            free(uplink->wblock);
+            free(uplink);
+            return NULL;
+        }
     }
 
     uplink->rblock = NULL;
