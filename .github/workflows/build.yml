@@ -38,6 +38,11 @@ jobs:
             app: gateway
             sysbuild: false
             blobs: hal_nxp
+          - manifest: west-zephyr.yml
+            target: native_sim
+            app: gateway
+            sysbuild: false
+            extra_args: -DCONFIG_GATEWAY_CLOUD=n
     container: golioth/golioth-zephyr-base:0.17.0-SDK-v0
     env:
       ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
