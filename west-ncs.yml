@@ -27,6 +27,11 @@ manifest:
       revision: 1ee8a3a865bdc4bb0b86a7a7333db003fc80d67e
       url: https://github.com/golioth/pouch
 
+    - name: golioth-zephyr-boards
+      path: modules/lib/golioth-boards
+      revision: main
+      url: https://github.com/golioth/golioth-zephyr-boards
+
   self:
     path: bluetooth-gateway
     west-commands: scripts/west-commands.yml
