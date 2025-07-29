@@ -13,6 +13,13 @@ patches:
     email: m.niestroj@emb.dev
     date: 2025-07-17
     apply-command: git am
+  - path: golioth/0003-gateway-support-device-cert-upload.patch
+    sha256sum: 39c6ae3924bfd346aa698f3206d478d0638ef36a4496347ea68a17a7ad4e6dda
+    module: modules/lib/golioth-firmware-sdk
+    author: Marcin Niestroj
+    email: m.niestroj@emb.dev
+    date: 2025-07-29
+    apply-command: git am
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
     sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
     module: zephyr
