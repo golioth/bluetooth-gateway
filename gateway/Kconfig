@@ -31,6 +31,12 @@ config GATEWAY_NUM_BLOCKS
       data between a node device and the cloud. Each block is equal
       to CONFIG_GOLIOTH_BLOCKWISE_UPLOAD_MAX_BLOCK_SIZE in length.
 
+config GATEWAY_DEVICE_CERT_MAX_LEN
+    int "Device certificate maximum length"
+    default 1024
+    help
+      Maximum length of device certificate.
+
 config GATEWAY_SERVER_CERT_MAX_LEN
     int "Server certificate maximum length"
     default 4096

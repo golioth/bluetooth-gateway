@@ -16,15 +16,65 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(cert);
 
+static struct golioth_client *_client;
+
 static uint8_t server_crt_buf[CONFIG_GATEWAY_SERVER_CERT_MAX_LEN];
 static atomic_t server_crt_len;
 static atomic_t server_crt_id;
+
+struct device_cert_context
+{
+    size_t len;
+    uint8_t buf[CONFIG_GATEWAY_DEVICE_CERT_MAX_LEN];
+};
 
 struct server_cert_context
 {
     size_t id;
     size_t offset;
 };
+
+struct device_cert_context *device_cert_start(void)
+{
+    struct device_cert_context *context = malloc(sizeof(struct device_cert_context));
+
+    context->len = 0;
+
+    return context;
+}
+
+int device_cert_push(struct device_cert_context *context, const void *data, size_t len)
+{
+    if (context->len + len > CONFIG_GATEWAY_DEVICE_CERT_MAX_LEN)
+    {
+        return -ENOSPC;
+    }
+
+    memcpy(&context->buf[context->len], data, len);
+    context->len += len;
+
+    return 0;
+}
+
+void device_cert_abort(struct device_cert_context *context)
+{
+    free(context);
+}
+
+int device_cert_finish(struct device_cert_context *context)
+{
+    enum golioth_status status;
+
+    status = golioth_gateway_device_cert_set(_client, context->buf, context->len, 5);
+    if (status != GOLIOTH_OK)
+    {
+        return -EIO;
+    }
+
+    device_cert_abort(context);
+
+    return 0;
+}
 
 struct server_cert_context *server_cert_start(void)
 {
@@ -90,6 +140,8 @@ void server_cert_abort(struct server_cert_context *context)
 void cert_module_on_connected(struct golioth_client *client)
 {
     enum golioth_status status;
+
+    _client = client;
 
     if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
     {

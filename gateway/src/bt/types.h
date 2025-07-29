@@ -29,5 +29,6 @@ struct golioth_node_info
     void *server_cert_scratch;
     struct golioth_ble_gatt_packetizer *packetizer;
     struct pouch_uplink *uplink;
+    struct device_cert_context *device_cert_ctx;
     struct server_cert_context *server_cert_ctx;
 };
