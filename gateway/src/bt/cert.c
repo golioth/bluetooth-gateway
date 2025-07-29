@@ -104,12 +104,25 @@ static uint8_t server_cert_read_cb(struct bt_conn *conn,
     return BT_GATT_ITER_STOP;
 }
 
+static void device_cert_cleanup(struct bt_conn *conn)
+{
+    struct golioth_node_info *node = get_node_info(conn);
+
+    if (node->device_cert_ctx)
+    {
+        device_cert_abort(node->device_cert_ctx);
+        node->device_cert_ctx = NULL;
+    }
+}
+
 static uint8_t device_cert_read_cb(struct bt_conn *conn,
                                    uint8_t err,
                                    struct bt_gatt_read_params *params,
                                    const void *data,
                                    uint16_t length)
 {
+    struct golioth_node_info *node = get_node_info(conn);
+
     if (err)
     {
         LOG_ERR("Failed to read BLE GATT %s (err %d)", "device cert", err);
@@ -119,6 +132,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     if (length == 0)
     {
         LOG_ERR("No device cert");
+        device_cert_cleanup(conn);
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         return BT_GATT_ITER_STOP;
     }
@@ -131,6 +145,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "device cert", (int) payload_len);
+        device_cert_cleanup(conn);
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         return BT_GATT_ITER_STOP;
     }
@@ -140,9 +155,19 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
         LOG_HEXDUMP_DBG(data, length, "[READ] BLE GATT device cert");
     }
 
+    device_cert_push(node->device_cert_ctx, payload, payload_len);
+
     if (is_last)
     {
-        /* TODO: send device cert to cloud before attempting uplink */
+        int err = device_cert_finish(node->device_cert_ctx);
+        if (err)
+        {
+            LOG_ERR("Failed to finish device cert: %d", err);
+            device_cert_cleanup(conn);
+            bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            return BT_GATT_ITER_STOP;
+        }
+
         gateway_uplink_start(conn);
         return BT_GATT_ITER_STOP;
     }
@@ -151,6 +176,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     if (err)
     {
         LOG_ERR("BT (re)read request failed: %d", err);
+        device_cert_cleanup(conn);
         bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         return BT_GATT_ITER_STOP;
     }
@@ -303,6 +329,8 @@ static void gateway_device_cert_read_start(struct bt_conn *conn)
 
     struct bt_gatt_read_params *read_params = &node->read_params;
     memset(read_params, 0, sizeof(*read_params));
+
+    node->device_cert_ctx = device_cert_start();
 
     read_params->func = device_cert_read_cb;
     read_params->handle_count = 1;
