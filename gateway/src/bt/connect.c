@@ -53,7 +53,9 @@ static uint8_t discover_func(struct bt_conn *conn,
             }
             else
             {
-                LOG_ERR("Could not discover %s characteristic", "server cert");
+                LOG_WRN("Could not discover %s characteristic", "server cert");
+                LOG_INF("Starting uplink without cert exchange");
+                gateway_uplink_start(conn);
             }
         }
 
