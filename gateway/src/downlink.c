@@ -122,7 +122,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
 {
     *is_last = false;
 
-    if (downlink->complete || downlink->aborted)
+    if (downlink->complete)
     {
         return -ENODATA;
     }
@@ -137,6 +137,12 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
             if (NULL == downlink->current_block)
             {
                 *dst_len = total_bytes_copied;
+                if (downlink->aborted)
+                {
+                    /* We have aborted the downlink and the block queue is empty */
+                    *is_last = true;
+                    return 0;
+                }
                 return -EAGAIN;
             }
         }
