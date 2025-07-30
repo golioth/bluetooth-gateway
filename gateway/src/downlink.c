@@ -56,6 +56,8 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
     if (NULL == block)
     {
         LOG_ERR("Failed to allocate block");
+        flush_block_queue(&downlink->block_queue);
+        downlink_finish(downlink);
         return GOLIOTH_ERR_MEM_ALLOC;
     }
 
