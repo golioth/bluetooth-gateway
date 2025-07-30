@@ -10,6 +10,7 @@
 
 #include <errno.h>
 
+#include <zephyr/kernel.h>
 #include <zephyr/sys/sflist.h>
 
 enum block_flags
@@ -25,18 +26,19 @@ struct block
     {
         uint8_t is_last : 1;
     } flags;
-    size_t capacity;
     size_t len;
-    uint8_t data[];
+    uint8_t data[CONFIG_GOLIOTH_BLOCKWISE_UPLOAD_MAX_BLOCK_SIZE];
 };
 
-struct block *block_alloc(void *user_data, size_t size)
+K_MEM_SLAB_DEFINE_STATIC(block_slab, sizeof(struct block), CONFIG_GATEWAY_NUM_BLOCKS, 4);
+
+struct block *block_alloc(void *user_data, k_timeout_t timeout)
 {
-    struct block *block = malloc(sizeof(struct block) + size);
-    if (NULL != block)
+    struct block *block = NULL;
+    int err = k_mem_slab_alloc(&block_slab, (void **) &block, timeout);
+    if (0 == err)
     {
         block->flags.is_last = 0;
-        block->capacity = size;
         block->len = 0;
         block->user_data = user_data;
     }
@@ -46,7 +48,7 @@ struct block *block_alloc(void *user_data, size_t size)
 
 void block_free(struct block *block)
 {
-    free(block);
+    k_mem_slab_free(&block_slab, block);
 }
 
 size_t block_length(const struct block *block)
@@ -72,7 +74,7 @@ void block_append(struct block *block, const void *data, size_t data_len)
 
 int block_get(const struct block *block, size_t offset, void *buf, size_t len)
 {
-    if (offset + len > block->capacity)
+    if (offset + len > CONFIG_GOLIOTH_BLOCKWISE_UPLOAD_MAX_BLOCK_SIZE)
     {
         return -EINVAL;
     }
