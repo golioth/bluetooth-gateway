@@ -84,9 +84,17 @@ static void write_response_cb(struct bt_conn *conn,
                               uint8_t err,
                               struct bt_gatt_write_params *params)
 {
-    LOG_INF("Received write response: %d", err);
-
     struct golioth_node_info *node = get_node_info(conn);
+
+    LOG_INF("Received write response: %d", err);
+    if (err)
+    {
+        downlink_abort(node->downlink_ctx);
+        golioth_ble_gatt_packetizer_finish(node->packetizer);
+
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return;
+    }
 
     if (downlink_is_complete(node->downlink_ctx))
     {
