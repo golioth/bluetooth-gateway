@@ -16,6 +16,7 @@
 
 #include "downlink.h"
 #include "uplink.h"
+#include "app_sensors.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
@@ -36,6 +37,7 @@ static void on_client_event(struct golioth_client *client,
     if (is_connected)
     {
         k_sem_give(&connected);
+        app_sensors_set_client(client);
     }
     LOG_INF("Golioth client %s", is_connected ? "connected" : "disconnected");
 }
@@ -106,7 +108,6 @@ int main(void)
     int err;
 
     connect_to_cloud();
-
     pouch_uplink_init(client);
     downlink_module_init(client);
 

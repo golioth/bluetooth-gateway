@@ -7,6 +7,7 @@ project(gateway)
 target_include_directories(app PRIVATE include)
 
 target_sources(app PRIVATE
+  src/app_sensors.c
   src/block.c
   src/bt/connect.c
   src/bt/downlink.c

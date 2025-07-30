@@ -3,3 +3,4 @@
 build/
 *.py[cod]
 *.egg
+.DS_Store
