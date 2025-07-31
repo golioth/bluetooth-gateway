@@ -1,1 +1,13 @@
 #include <aludel_elixir_ble_hci.dtsi>
+
+&i2c2 {
+	/* Needed for I2C writes used by libostentus */
+	zephyr,concat-buf-size = <48>;
+
+	ina260_ch0: ina260@40 {
+        status = "okay";
+		compatible = "ti,ina260";
+		reg = <0x40>;
+	};
+
+};

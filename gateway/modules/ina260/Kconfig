@@ -1,0 +1,10 @@
+# Copyright (c) 2023 Golioth, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config INA260
+	bool "INA260 Current and Power Monitor"
+	default y
+	depends on DT_HAS_TI_INA260_ENABLED
+	select I2C
+	help
+	  Enable driver for the INA260 Current and Power Monitor.

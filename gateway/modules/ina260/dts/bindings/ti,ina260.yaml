@@ -1,0 +1,9 @@
+# Copyright (c) 2023 Golioth, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    The INA260 is a digital-output, current, power, and voltage monitor with an i2C interface
+
+compatible: "ti,ina260"
+
+include: [sensor-device.yaml, i2c-device.yaml]
