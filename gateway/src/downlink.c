@@ -85,7 +85,11 @@ void downlink_end_cb(enum golioth_status status,
 
     if (GOLIOTH_OK != status)
     {
-        /* TODO: Allow partial downlinks */
+        LOG_ERR("Downlink ending due to error %d", status);
+        if (GOLIOTH_ERR_COAP_RESPONSE == status)
+        {
+            LOG_ERR("CoAP error: %d.%02d", coap_rsp_code->code_class, coap_rsp_code->code_detail);
+        }
 
         downlink_abort(downlink);
 
