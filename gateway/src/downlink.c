@@ -166,7 +166,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
 
             block_free(downlink->current_block);
             downlink->offset = 0;
-            downlink->current_block = NULL;
+            downlink->current_block = k_fifo_get(&downlink->block_queue, K_NO_WAIT);
 
             if (*is_last)
             {
