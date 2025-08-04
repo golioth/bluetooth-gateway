@@ -69,7 +69,7 @@ static int write_downlink_characteristic(struct bt_conn *conn)
     params->data = node->downlink_scratch;
     params->length = len;
 
-    LOG_INF("Writing %d bytes to handle %d", params->length, params->handle);
+    LOG_DBG("Writing %d bytes to handle %d", params->length, params->handle);
 
     int res = bt_gatt_write(conn, params);
     if (0 > res)
@@ -86,7 +86,7 @@ static void write_response_cb(struct bt_conn *conn,
 {
     struct golioth_node_info *node = get_node_info(conn);
 
-    LOG_INF("Received write response: %d", err);
+    LOG_DBG("Received write response: %d", err);
     if (err)
     {
         downlink_abort(node->downlink_ctx);
