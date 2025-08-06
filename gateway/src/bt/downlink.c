@@ -75,10 +75,9 @@ static int write_downlink_characteristic(struct bt_conn *conn)
     if (0 > res)
     {
         LOG_ERR("GATT write error: %d", res);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
     }
 
-    return 0;
+    return res;
 }
 
 static void write_response_cb(struct bt_conn *conn,
