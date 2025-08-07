@@ -126,6 +126,8 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
     {
         LOG_ERR("Failed to connect to %s %u %s", addr, err, bt_hci_err_to_str(err));
 
+        bt_conn_unref(conn);
+
         gateway_scan_start();
         return;
     }
@@ -147,6 +149,7 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
     if (err)
     {
         LOG_ERR("Failed to start discovery: %d", err);
+        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
     }
 }
 

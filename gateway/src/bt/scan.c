@@ -14,6 +14,8 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(scan);
 
+#include <gateway/bt/scan.h>
+
 static inline bool version_is_compatible(const struct golioth_ble_gatt_adv_data *adv_data)
 {
     uint8_t self_ver = adv_data->version
@@ -101,7 +103,8 @@ static void device_found(const bt_addr_le_t *addr,
         err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN, BT_LE_CONN_PARAM_DEFAULT, &conn);
         if (err)
         {
-            LOG_ERR("Create auto conn to failed (%d)", err);
+            LOG_ERR("Create auto conn failed (%d)", err);
+            gateway_scan_start();
             return;
         }
     }
