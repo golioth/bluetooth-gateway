@@ -50,7 +50,7 @@ static int write_downlink_characteristic(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
     struct bt_gatt_write_params *params = &node->write_params;
-    uint16_t downlink_handle = node->attr_handles.downlink;
+    uint16_t downlink_handle = node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK];
 
     size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
@@ -136,7 +136,7 @@ struct downlink_context *gateway_downlink_start(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
 
-    if (0 == node->attr_handles.downlink)
+    if (0 == node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK])
     {
         LOG_ERR("Downlink characteristic undiscovered");
         return NULL;
