@@ -6,18 +6,25 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <zephyr/bluetooth/gatt.h>
+
 #define BT_ATT_OVERHEAD 3 /* opcode (1) + handle (2) */
+
+enum golioth_gatt_attr
+{
+    GOLIOTH_GATT_ATTR_INFO,
+    GOLIOTH_GATT_ATTR_DOWNLINK,
+    GOLIOTH_GATT_ATTR_UPLINK,
+    GOLIOTH_GATT_ATTR_SERVER_CERT,
+    GOLIOTH_GATT_ATTR_DEVICE_CERT,
+
+    GOLIOTH_GATT_ATTRS,
+};
 
 struct golioth_node_info
 {
-    struct
-    {
-        uint16_t info;
-        uint16_t downlink;
-        uint16_t uplink;
-        uint16_t server_cert;
-        uint16_t device_cert;
-    } attr_handles;
+    uint16_t attr_handles[GOLIOTH_GATT_ATTRS];
     union
     {
         struct bt_gatt_discover_params discover_params;

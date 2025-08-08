@@ -3,12 +3,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "connect.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/sys/util.h>
 
 #include <pouch/transport/ble_gatt/common/uuids.h>
 
@@ -23,97 +25,96 @@
 LOG_MODULE_REGISTER(connect);
 
 static const struct bt_uuid_128 golioth_svc_uuid = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL);
-static const struct bt_uuid_128 golioth_info_chrc_uuid =
-    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_INFO_CHRC_VAL);
-static const struct bt_uuid_128 golioth_downlink_chrc_uuid =
-    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DOWNLINK_CHRC_VAL);
-static const struct bt_uuid_128 golioth_uplink_chrc_uuid =
-    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL);
-static const struct bt_uuid_128 golioth_server_cert_chrc_uuid =
-    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SERVER_CERT_CHRC_VAL);
-static const struct bt_uuid_128 golioth_device_cert_chrc_uuid =
-    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DEVICE_CERT_CHRC_VAL);
+static const struct bt_uuid_128 char_uuids[GOLIOTH_GATT_ATTRS] = {
+    [GOLIOTH_GATT_ATTR_INFO] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_INFO_CHRC_VAL),
+    [GOLIOTH_GATT_ATTR_DOWNLINK] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DOWNLINK_CHRC_VAL),
+    [GOLIOTH_GATT_ATTR_UPLINK] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_UPLINK_CHRC_VAL),
+    [GOLIOTH_GATT_ATTR_SERVER_CERT] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SERVER_CERT_CHRC_VAL),
+    [GOLIOTH_GATT_ATTR_DEVICE_CERT] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DEVICE_CERT_CHRC_VAL),
+};
+
+BUILD_ASSERT(ARRAY_SIZE(char_uuids) == GOLIOTH_GATT_ATTRS,
+             "Missing characteristic UUID definitions");
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
 
-static uint8_t discover_func(struct bt_conn *conn,
-                             const struct bt_gatt_attr *attr,
-                             struct bt_gatt_discover_params *params)
+static uint8_t discover_characteristics(struct bt_conn *conn,
+                                        const struct bt_gatt_attr *attr,
+                                        struct bt_gatt_discover_params *params)
 {
-    uint8_t conn_idx = bt_conn_index(conn);
+    struct golioth_node_info *node = get_node_info(conn);
 
-    if (NULL == attr)
+    if (attr)
     {
-        if (BT_GATT_DISCOVER_CHARACTERISTIC == params->type)
+        struct bt_gatt_chrc *chrc = attr->user_data;
+        for (int i = 0; i < GOLIOTH_GATT_ATTRS; i++)
         {
-            uint16_t server_cert_handle = connected_nodes[conn_idx].attr_handles.server_cert;
-            if (0 != server_cert_handle)
+            if (0 == bt_uuid_cmp(chrc->uuid, &char_uuids[i].uuid))
             {
-                gateway_cert_exchange_start(conn);
+                node->attr_handles[i] = chrc->value_handle;
+                return BT_GATT_ITER_CONTINUE;
             }
-            else
-            {
-                LOG_WRN("Could not discover %s characteristic", "server cert");
-                LOG_INF("Starting uplink without cert exchange");
-                gateway_uplink_start(conn);
-            }
+        }
+
+        LOG_WRN("Discovered Unknown characteristic: %d", chrc->value_handle);
+        return BT_GATT_ITER_CONTINUE;
+    }
+
+    if (!node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK]
+        || !node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK])
+    {
+        LOG_ERR("Could not discover %s characteristics", "pouch");
+        (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return BT_GATT_ITER_STOP;
+    }
+
+    if (node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT]
+        && node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT])
+    {
+        gateway_cert_exchange_start(conn);
+    }
+    else
+    {
+        LOG_WRN("Could not discover %s characteristics", "certificate");
+        LOG_INF("Starting uplink without cert exchange");
+        gateway_uplink_start(conn);
+    }
+
+    return BT_GATT_ITER_STOP;
+}
+
+static uint8_t discover_services(struct bt_conn *conn,
+                                 const struct bt_gatt_attr *attr,
+                                 struct bt_gatt_discover_params *params)
+{
+    if (!attr)
+    {
+        LOG_ERR("Missing pouch service");
+        (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        return BT_GATT_ITER_STOP;
+    }
+
+    struct bt_gatt_service_val *svc = attr->user_data;
+
+    if (0 == bt_uuid_cmp(&golioth_svc_uuid.uuid, svc->uuid))
+    {
+        params->func = discover_characteristics;
+        params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
+        params->start_handle = attr->handle + 1;
+        params->end_handle = svc->end_handle;
+        params->uuid = NULL;
+
+        int err = bt_gatt_discover(conn, params);
+        if (err)
+        {
+            LOG_ERR("Error discovering characteristics: %d", err);
+            (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         }
 
         return BT_GATT_ITER_STOP;
     }
 
-    if (BT_GATT_DISCOVER_PRIMARY == params->type)
-    {
-        struct bt_gatt_service_val *svc = attr->user_data;
-
-        if (0 == bt_uuid_cmp(&golioth_svc_uuid.uuid, svc->uuid))
-        {
-            params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
-            params->start_handle = attr->handle + 1;
-            params->end_handle = svc->end_handle;
-            params->uuid = NULL;
-
-            bt_gatt_discover(conn, params);
-
-            return BT_GATT_ITER_STOP;
-        }
-
-        return BT_GATT_ITER_CONTINUE;
-    }
-
-    if (BT_GATT_DISCOVER_CHARACTERISTIC == params->type)
-    {
-        struct bt_gatt_chrc *chrc = attr->user_data;
-
-        if (0 == bt_uuid_cmp(&golioth_info_chrc_uuid.uuid, chrc->uuid))
-        {
-            connected_nodes[conn_idx].attr_handles.info = chrc->value_handle;
-        }
-        else if (0 == bt_uuid_cmp(&golioth_downlink_chrc_uuid.uuid, chrc->uuid))
-        {
-            connected_nodes[conn_idx].attr_handles.downlink = chrc->value_handle;
-        }
-        else if (0 == bt_uuid_cmp(&golioth_uplink_chrc_uuid.uuid, chrc->uuid))
-        {
-            connected_nodes[conn_idx].attr_handles.uplink = chrc->value_handle;
-        }
-        else if (0 == bt_uuid_cmp(&golioth_device_cert_chrc_uuid.uuid, chrc->uuid))
-        {
-            connected_nodes[conn_idx].attr_handles.device_cert = chrc->value_handle;
-        }
-        else if (0 == bt_uuid_cmp(&golioth_server_cert_chrc_uuid.uuid, chrc->uuid))
-        {
-            connected_nodes[conn_idx].attr_handles.server_cert = chrc->value_handle;
-        }
-        else
-        {
-            LOG_WRN("Discovered Unknown characteristic: %d", chrc->value_handle);
-        }
-
-        return BT_GATT_ITER_CONTINUE;
-    }
-
-    return BT_GATT_ITER_STOP;
+    return BT_GATT_ITER_CONTINUE;
 }
 
 static void bt_connected(struct bt_conn *conn, uint8_t err)
@@ -139,7 +140,7 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
 
     struct bt_gatt_discover_params *discover_params = &connected_nodes[conn_idx].discover_params;
 
-    discover_params->func = discover_func;
+    discover_params->func = discover_services;
     discover_params->type = BT_GATT_DISCOVER_PRIMARY;
     discover_params->start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
     discover_params->end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
