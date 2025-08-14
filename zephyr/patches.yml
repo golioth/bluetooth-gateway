@@ -1,25 +1,4 @@
 patches:
-  - path: golioth/0001-gateway-receive-downlink-as-response-to-uplink.patch
-    sha256sum: d3bbbf9212d0e20f49cd9944c23d85766feda18997418d3e299ee186bbdd8236
-    module: modules/lib/golioth-firmware-sdk
-    author: Sam Friedman
-    email: sam@golioth.io
-    date: 2025-07-08
-    apply-command: git am
-  - path: golioth/0002-gateway-add-server-certificate-get.patch
-    sha256sum: 8afdddd68ae3e81b3f007edb8b7c967f8cd12643bcf5b98d067a9e43ea27f03e
-    module: modules/lib/golioth-firmware-sdk
-    author: Marcin Niestroj
-    email: m.niestroj@emb.dev
-    date: 2025-07-17
-    apply-command: git am
-  - path: golioth/0003-gateway-support-device-cert-upload.patch
-    sha256sum: 39c6ae3924bfd346aa698f3206d478d0638ef36a4496347ea68a17a7ad4e6dda
-    module: modules/lib/golioth-firmware-sdk
-    author: Marcin Niestroj
-    email: m.niestroj@emb.dev
-    date: 2025-07-29
-    apply-command: git am
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
     sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
     module: zephyr
