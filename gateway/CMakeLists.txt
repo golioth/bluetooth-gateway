@@ -15,6 +15,7 @@ target_sources(app PRIVATE
   src/bt/uplink.c
   src/cert.c
   src/downlink.c
+  src/fatal_error.c
   src/uplink.c
   src/main.c
 )
