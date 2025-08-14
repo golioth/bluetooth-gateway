@@ -1,0 +1,1033 @@
+From 256ba555f7c4a4e95366aa86edf30990cd832a80 Mon Sep 17 00:00:00 2001
+From: Alberto Escolar Piedras <alberto.escolar.piedras@nordicsemi.no>
+Date: Mon, 24 Feb 2025 16:06:15 +0100
+Subject: [PATCH] drivers: nsos: Use native simulator errno conversion
+
+Now that the native simulator has a common version of the error
+conversion let's use that instead of a version specific for the
+NSOS code.
+
+Signed-off-by: Alberto Escolar Piedras <alberto.escolar.piedras@nordicsemi.no>
+---
+ drivers/net/CMakeLists.txt |   2 -
+ drivers/net/Kconfig        |   1 +
+ drivers/net/nsos_adapt.c   |  68 ++++++++++----------
+ drivers/net/nsos_errno.c   | 125 -------------------------------------
+ drivers/net/nsos_errno.h   |  95 ----------------------------
+ drivers/net/nsos_fcntl.c   |   4 +-
+ drivers/net/nsos_sockets.c |  96 ++++++++++++++--------------
+ 7 files changed, 85 insertions(+), 306 deletions(-)
+ delete mode 100644 drivers/net/nsos_errno.c
+ delete mode 100644 drivers/net/nsos_errno.h
+
+diff --git a/drivers/net/CMakeLists.txt b/drivers/net/CMakeLists.txt
+index 456d27c02e9..ba3e44fd1f4 100644
+--- a/drivers/net/CMakeLists.txt
++++ b/drivers/net/CMakeLists.txt
+@@ -14,7 +14,6 @@ if(CONFIG_NET_NATIVE_OFFLOADED_SOCKETS)
+   zephyr_library_include_directories(
+     ${ZEPHYR_BASE}/subsys/net/lib/sockets
+   )
+-  zephyr_library_sources(nsos_errno.c)
+   zephyr_library_sources(nsos_fcntl.c)
+   zephyr_library_sources(nsos_netdb.c)
+   zephyr_library_sources(nsos_sockets.c)
+@@ -23,7 +22,6 @@ if(CONFIG_NET_NATIVE_OFFLOADED_SOCKETS)
+     -DNSOS_EPOLL_WAIT_INTERVAL=${CONFIG_NET_NATIVE_OFFLOADED_SOCKETS_EPOLL_WAIT_INTERVAL}
+   )
+   target_sources(native_simulator INTERFACE nsos_adapt.c)
+-  target_sources(native_simulator INTERFACE nsos_errno.c)
+   target_sources(native_simulator INTERFACE nsos_fcntl.c)
+   target_sources(native_simulator INTERFACE nsos_netdb.c)
+ endif()
+diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
+index fc316d0f029..7b176606cfb 100644
+--- a/drivers/net/Kconfig
++++ b/drivers/net/Kconfig
+@@ -249,6 +249,7 @@ menuconfig NET_NATIVE_OFFLOADED_SOCKETS
+ 	depends on ARCH_POSIX
+ 	depends on NATIVE_LIBRARY
+ 	depends on NET_SOCKETS_OFFLOAD
++	select NATIVE_USE_NSI_ERRNO
+ 	help
+ 	  Offloaded sockets for Native Simulator utilize host BSD sockets API (like socket(),
+ 	  connect(), send(), recvfrom(), etc.) in order to provide networking capability.
+diff --git a/drivers/net/nsos_adapt.c b/drivers/net/nsos_adapt.c
+index 1d7b2598f9c..9e908982e38 100644
+--- a/drivers/net/nsos_adapt.c
++++ b/drivers/net/nsos_adapt.c
+@@ -29,7 +29,7 @@
+ #include <unistd.h>
+ 
+ #include "nsos.h"
+-#include "nsos_errno.h"
++#include "nsi_errno.h"
+ #include "nsos_fcntl.h"
+ #include "nsos_netdb.h"
+ #include "nsos_socket.h"
+@@ -56,7 +56,7 @@ static int nsos_adapt_nfds;
+ 
+ int nsos_adapt_get_errno(void)
+ {
+-	return errno_to_nsos_mid(errno);
++	return nsi_errno_to_mid(errno);
+ }
+ 
+ static int socket_family_from_nsos_mid(int family_mid, int *family)
+@@ -79,7 +79,7 @@ static int socket_family_from_nsos_mid(int family_mid, int *family)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket family %d not supported\n", __func__, family_mid);
+-		return -NSOS_MID_EAFNOSUPPORT;
++		return -NSI_ERRNO_MID_EAFNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -105,7 +105,7 @@ static int socket_family_to_nsos_mid(int family, int *family_mid)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket family %d not supported\n", __func__, family);
+-		return -NSOS_MID_EAFNOSUPPORT;
++		return -NSI_ERRNO_MID_EAFNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -143,7 +143,7 @@ static int socket_proto_from_nsos_mid(int proto_mid, int *proto)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket protocol %d not supported\n", __func__, proto_mid);
+-		return -NSOS_MID_EPROTONOSUPPORT;
++		return -NSI_ERRNO_MID_EPROTONOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -181,7 +181,7 @@ static int socket_proto_to_nsos_mid(int proto, int *proto_mid)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket protocol %d not supported\n", __func__, proto);
+-		return -NSOS_MID_EPROTONOSUPPORT;
++		return -NSI_ERRNO_MID_EPROTONOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -201,7 +201,7 @@ static int socket_type_from_nsos_mid(int type_mid, int *type)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket type %d not supported\n", __func__, type_mid);
+-		return -NSOS_MID_ESOCKTNOSUPPORT;
++		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -221,7 +221,7 @@ static int socket_type_to_nsos_mid(int type, int *type_mid)
+ 		break;
+ 	default:
+ 		nsi_print_warning("%s: socket type %d not supported\n", __func__, type);
+-		return -NSOS_MID_ESOCKTNOSUPPORT;
++		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -241,7 +241,7 @@ static int socket_flags_from_nsos_mid(int flags_mid)
+ 				 &flags, MSG_WAITALL);
+ 
+ 	if (flags_mid != 0) {
+-		return -NSOS_MID_EINVAL;
++		return -NSI_ERRNO_MID_EINVAL;
+ 	}
+ 
+ 	return flags;
+@@ -271,7 +271,7 @@ int nsos_adapt_socket(int family_mid, int type_mid, int proto_mid)
+ 
+ 	ret = socket(family, type, proto);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+@@ -350,7 +350,7 @@ static int sockaddr_from_nsos_mid(struct sockaddr **addr, socklen_t *addrlen,
+ 	}
+ 	}
+ 
+-	return -NSOS_MID_EINVAL;
++	return -NSI_ERRNO_MID_EINVAL;
+ }
+ 
+ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+@@ -437,7 +437,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 
+ 	nsi_print_warning("%s: socket family %d not supported\n", __func__, addr->sa_family);
+ 
+-	return -NSOS_MID_EINVAL;
++	return -NSI_ERRNO_MID_EINVAL;
+ }
+ 
+ int nsos_adapt_bind(int fd, const struct nsos_mid_sockaddr *addr_mid, size_t addrlen_mid)
+@@ -454,7 +454,7 @@ int nsos_adapt_bind(int fd, const struct nsos_mid_sockaddr *addr_mid, size_t add
+ 
+ 	ret = bind(fd, addr, addrlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+@@ -474,7 +474,7 @@ int nsos_adapt_connect(int fd, const struct nsos_mid_sockaddr *addr_mid, size_t
+ 
+ 	ret = connect(fd, addr, addrlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+@@ -486,7 +486,7 @@ int nsos_adapt_listen(int fd, int backlog)
+ 
+ 	ret = listen(fd, backlog);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+@@ -502,7 +502,7 @@ int nsos_adapt_accept(int fd, struct nsos_mid_sockaddr *addr_mid, size_t *addrle
+ 
+ 	ret = accept(fd, addr, &addrlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	err = sockaddr_to_nsos_mid(addr, addrlen, addr_mid, addrlen_mid);
+@@ -531,7 +531,7 @@ int nsos_adapt_sendto(int fd, const void *buf, size_t len, int flags,
+ 		     socket_flags_from_nsos_mid(flags) | MSG_NOSIGNAL,
+ 		     addr, addrlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+@@ -572,7 +572,7 @@ int nsos_adapt_sendmsg(int fd, const struct nsos_mid_msghdr *msg_mid, int flags)
+ 
+ 	ret = sendmsg(fd, &msg, socket_flags_from_nsos_mid(flags) | MSG_NOSIGNAL);
+ 	if (ret < 0) {
+-		ret = -errno_to_nsos_mid(errno);
++		ret = -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	free(msg_iov);
+@@ -592,7 +592,7 @@ int nsos_adapt_recvfrom(int fd, void *buf, size_t len, int flags,
+ 	ret = recvfrom(fd, buf, len, socket_flags_from_nsos_mid(flags),
+ 		       addr, &addrlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	err = sockaddr_to_nsos_mid(addr, addrlen, addr_mid, addrlen_mid);
+@@ -611,7 +611,7 @@ static int nsos_adapt_getsockopt_int(int fd, int level, int optname,
+ 
+ 	ret = getsockopt(fd, level, optname, optval, &optlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	*nsos_mid_optlen = optlen;
+@@ -632,10 +632,10 @@ int nsos_adapt_getsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 
+ 			ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &optlen);
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+-			*(int *)nsos_mid_optval = errno_to_nsos_mid(err);
++			*(int *)nsos_mid_optval = nsi_errno_to_mid(err);
+ 
+ 			return 0;
+ 		}
+@@ -647,7 +647,7 @@ int nsos_adapt_getsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 
+ 			ret = getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &optlen);
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+ 			err = socket_type_to_nsos_mid(type, nsos_mid_optval);
+@@ -665,7 +665,7 @@ int nsos_adapt_getsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 
+ 			ret = getsockopt(fd, SOL_SOCKET, SO_PROTOCOL, &proto, &optlen);
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+ 			err = socket_proto_to_nsos_mid(proto, nsos_mid_optval);
+@@ -683,7 +683,7 @@ int nsos_adapt_getsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 
+ 			ret = getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &family, &optlen);
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+ 			err = socket_family_to_nsos_mid(family, nsos_mid_optval);
+@@ -740,7 +740,7 @@ int nsos_adapt_getsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 		break;
+ 	}
+ 
+-	return -NSOS_MID_EOPNOTSUPP;
++	return -NSI_ERRNO_MID_EOPNOTSUPP;
+ }
+ 
+ static int nsos_adapt_setsockopt_int(int fd, int level, int optname,
+@@ -750,7 +750,7 @@ static int nsos_adapt_setsockopt_int(int fd, int level, int optname,
+ 
+ 	ret = setsockopt(fd, level, optname, optval, optlen);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return 0;
+@@ -777,7 +777,7 @@ int nsos_adapt_setsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 			ret = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,
+ 					 &tv, sizeof(tv));
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+ 			return 0;
+@@ -793,7 +793,7 @@ int nsos_adapt_setsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 			ret = setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO,
+ 					 &tv, sizeof(tv));
+ 			if (ret < 0) {
+-				return -errno_to_nsos_mid(errno);
++				return -nsi_errno_to_mid(errno);
+ 			}
+ 
+ 			return 0;
+@@ -845,7 +845,7 @@ int nsos_adapt_setsockopt(int fd, int nsos_mid_level, int nsos_mid_optname,
+ 		break;
+ 	}
+ 
+-	return -NSOS_MID_EOPNOTSUPP;
++	return -NSI_ERRNO_MID_EOPNOTSUPP;
+ }
+ 
+ #define MAP_POLL_EPOLL(_event_from, _event_to)	\
+@@ -958,7 +958,7 @@ static int addrinfo_to_nsos_mid(struct addrinfo *res,
+ 
+ 	nsos_res_wraps = calloc(n_res, sizeof(*nsos_res_wraps));
+ 	if (!nsos_res_wraps) {
+-		return -NSOS_MID_ENOMEM;
++		return -NSI_ERRNO_MID_ENOMEM;
+ 	}
+ 
+ 	for (struct addrinfo *res_p = res; res_p; res_p = res_p->ai_next, idx_res++) {
+@@ -1092,7 +1092,7 @@ int nsos_adapt_fcntl_setfl(int fd, int flags)
+ 
+ 	ret = fcntl(fd, F_SETFL, fl_from_nsos_mid(flags));
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return 0;
+@@ -1104,7 +1104,7 @@ int nsos_adapt_fionread(int fd, int *avail)
+ 
+ 	ret = ioctl(fd, FIONREAD, avail);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return 0;
+@@ -1116,7 +1116,7 @@ int nsos_adapt_dup(int oldfd)
+ 
+ 	ret = dup(oldfd);
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(errno);
++		return -nsi_errno_to_mid(errno);
+ 	}
+ 
+ 	return ret;
+diff --git a/drivers/net/nsos_errno.c b/drivers/net/nsos_errno.c
+deleted file mode 100644
+index 417c1af4f06..00000000000
+--- a/drivers/net/nsos_errno.c
++++ /dev/null
+@@ -1,125 +0,0 @@
+-/**
+- * Copyright (c) 2023-2024 Marcin Niestroj
+- *
+- * SPDX-License-Identifier: Apache-2.0
+- */
+-
+-#include "nsos_errno.h"
+-
+-#ifndef ARRAY_SIZE
+-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+-#endif
+-
+-struct nsos_mid_errno_map {
+-	/** Zephyr/host error code */
+-	int err;
+-	/** NSOS middleground error code */
+-	int mid_err;
+-};
+-
+-#define ERR(_name)				\
+-	{ _name, NSOS_MID_ ## _name }
+-
+-static const struct nsos_mid_errno_map map[] = {
+-	ERR(EPERM),
+-	ERR(ENOENT),
+-	ERR(ESRCH),
+-	ERR(EINTR),
+-	ERR(EIO),
+-	ERR(ENXIO),
+-	ERR(E2BIG),
+-	ERR(ENOEXEC),
+-	ERR(EBADF),
+-	ERR(ECHILD),
+-	ERR(EAGAIN),
+-	ERR(ENOMEM),
+-	ERR(EACCES),
+-	ERR(EFAULT),
+-	ERR(ENOTBLK),
+-	ERR(EBUSY),
+-	ERR(EEXIST),
+-	ERR(EXDEV),
+-	ERR(ENODEV),
+-	ERR(ENOTDIR),
+-	ERR(EISDIR),
+-	ERR(EINVAL),
+-	ERR(ENFILE),
+-	ERR(EMFILE),
+-	ERR(ENOTTY),
+-	ERR(ETXTBSY),
+-	ERR(EFBIG),
+-	ERR(ENOSPC),
+-	ERR(ESPIPE),
+-	ERR(EROFS),
+-	ERR(EMLINK),
+-	ERR(EPIPE),
+-	ERR(EDOM),
+-	ERR(ERANGE),
+-	ERR(ENOMSG),
+-	ERR(EDEADLK),
+-	ERR(ENOLCK),
+-	ERR(ENOSTR),
+-	ERR(ENODATA),
+-	ERR(ETIME),
+-	ERR(ENOSR),
+-	ERR(EPROTO),
+-	ERR(EBADMSG),
+-	ERR(ENOSYS),
+-	ERR(ENOTEMPTY),
+-	ERR(ENAMETOOLONG),
+-	ERR(ELOOP),
+-	ERR(EOPNOTSUPP),
+-	ERR(EPFNOSUPPORT),
+-	ERR(ECONNRESET),
+-	ERR(ENOBUFS),
+-	ERR(EAFNOSUPPORT),
+-	ERR(EPROTOTYPE),
+-	ERR(ENOTSOCK),
+-	ERR(ENOPROTOOPT),
+-	ERR(ESHUTDOWN),
+-	ERR(ECONNREFUSED),
+-	ERR(EADDRINUSE),
+-	ERR(ECONNABORTED),
+-	ERR(ENETUNREACH),
+-	ERR(ENETDOWN),
+-	ERR(ETIMEDOUT),
+-	ERR(EHOSTDOWN),
+-	ERR(EHOSTUNREACH),
+-	ERR(EINPROGRESS),
+-	ERR(EALREADY),
+-	ERR(EDESTADDRREQ),
+-	ERR(EMSGSIZE),
+-	ERR(EPROTONOSUPPORT),
+-	ERR(ESOCKTNOSUPPORT),
+-	ERR(EADDRNOTAVAIL),
+-	ERR(ENETRESET),
+-	ERR(EISCONN),
+-	ERR(ENOTCONN),
+-	ERR(ETOOMANYREFS),
+-	ERR(ENOTSUP),
+-	ERR(EILSEQ),
+-	ERR(EOVERFLOW),
+-	ERR(ECANCELED),
+-};
+-
+-int errno_to_nsos_mid(int err)
+-{
+-	for (int i = 0; i < ARRAY_SIZE(map); i++) {
+-		if (map[i].err == err) {
+-			return map[i].mid_err;
+-		}
+-	}
+-
+-	return err;
+-}
+-
+-int errno_from_nsos_mid(int err)
+-{
+-	for (int i = 0; i < ARRAY_SIZE(map); i++) {
+-		if (map[i].mid_err == err) {
+-			return map[i].err;
+-		}
+-	}
+-
+-	return err;
+-}
+diff --git a/drivers/net/nsos_errno.h b/drivers/net/nsos_errno.h
+deleted file mode 100644
+index 8e9b6214671..00000000000
+--- a/drivers/net/nsos_errno.h
++++ /dev/null
+@@ -1,95 +0,0 @@
+-/**
+- * Copyright (c) 2023-2024 Marcin Niestroj
+- *
+- * SPDX-License-Identifier: Apache-2.0
+- */
+-
+-#ifndef __DRIVERS_NET_NSOS_ERRNO_H__
+-#define __DRIVERS_NET_NSOS_ERRNO_H__
+-
+-#include <errno.h>
+-
+-#define NSOS_MID_EPERM 1         /**< Not owner */
+-#define NSOS_MID_ENOENT 2        /**< No such file or directory */
+-#define NSOS_MID_ESRCH 3         /**< No such context */
+-#define NSOS_MID_EINTR 4         /**< Interrupted system call */
+-#define NSOS_MID_EIO 5           /**< I/O error */
+-#define NSOS_MID_ENXIO 6         /**< No such device or address */
+-#define NSOS_MID_E2BIG 7         /**< Arg list too long */
+-#define NSOS_MID_ENOEXEC 8       /**< Exec format error */
+-#define NSOS_MID_EBADF 9         /**< Bad file number */
+-#define NSOS_MID_ECHILD 10       /**< No children */
+-#define NSOS_MID_EAGAIN 11       /**< No more contexts */
+-#define NSOS_MID_ENOMEM 12       /**< Not enough core */
+-#define NSOS_MID_EACCES 13       /**< Permission denied */
+-#define NSOS_MID_EFAULT 14       /**< Bad address */
+-#define NSOS_MID_ENOTBLK 15      /**< Block device required */
+-#define NSOS_MID_EBUSY 16        /**< Mount device busy */
+-#define NSOS_MID_EEXIST 17       /**< File exists */
+-#define NSOS_MID_EXDEV 18        /**< Cross-device link */
+-#define NSOS_MID_ENODEV 19       /**< No such device */
+-#define NSOS_MID_ENOTDIR 20      /**< Not a directory */
+-#define NSOS_MID_EISDIR 21       /**< Is a directory */
+-#define NSOS_MID_EINVAL 22       /**< Invalid argument */
+-#define NSOS_MID_ENFILE 23       /**< File table overflow */
+-#define NSOS_MID_EMFILE 24       /**< Too many open files */
+-#define NSOS_MID_ENOTTY 25       /**< Not a typewriter */
+-#define NSOS_MID_ETXTBSY 26      /**< Text file busy */
+-#define NSOS_MID_EFBIG 27        /**< File too large */
+-#define NSOS_MID_ENOSPC 28       /**< No space left on device */
+-#define NSOS_MID_ESPIPE 29       /**< Illegal seek */
+-#define NSOS_MID_EROFS 30        /**< Read-only file system */
+-#define NSOS_MID_EMLINK 31       /**< Too many links */
+-#define NSOS_MID_EPIPE 32        /**< Broken pipe */
+-#define NSOS_MID_EDOM 33         /**< Argument too large */
+-#define NSOS_MID_ERANGE 34       /**< Result too large */
+-#define NSOS_MID_ENOMSG 35       /**< Unexpected message type */
+-#define NSOS_MID_EDEADLK 45      /**< Resource deadlock avoided */
+-#define NSOS_MID_ENOLCK 46       /**< No locks available */
+-#define NSOS_MID_ENOSTR 60       /**< STREAMS device required */
+-#define NSOS_MID_ENODATA 61      /**< Missing expected message data */
+-#define NSOS_MID_ETIME 62        /**< STREAMS timeout occurred */
+-#define NSOS_MID_ENOSR 63        /**< Insufficient memory */
+-#define NSOS_MID_EPROTO 71       /**< Generic STREAMS error */
+-#define NSOS_MID_EBADMSG 77      /**< Invalid STREAMS message */
+-#define NSOS_MID_ENOSYS 88       /**< Function not implemented */
+-#define NSOS_MID_ENOTEMPTY 90    /**< Directory not empty */
+-#define NSOS_MID_ENAMETOOLONG 91 /**< File name too long */
+-#define NSOS_MID_ELOOP 92        /**< Too many levels of symbolic links */
+-#define NSOS_MID_EOPNOTSUPP 95   /**< Operation not supported on socket */
+-#define NSOS_MID_EPFNOSUPPORT 96 /**< Protocol family not supported */
+-#define NSOS_MID_ECONNRESET 104   /**< Connection reset by peer */
+-#define NSOS_MID_ENOBUFS 105      /**< No buffer space available */
+-#define NSOS_MID_EAFNOSUPPORT 106 /**< Addr family not supported */
+-#define NSOS_MID_EPROTOTYPE 107   /**< Protocol wrong type for socket */
+-#define NSOS_MID_ENOTSOCK 108     /**< Socket operation on non-socket */
+-#define NSOS_MID_ENOPROTOOPT 109  /**< Protocol not available */
+-#define NSOS_MID_ESHUTDOWN 110    /**< Can't send after socket shutdown */
+-#define NSOS_MID_ECONNREFUSED 111 /**< Connection refused */
+-#define NSOS_MID_EADDRINUSE 112   /**< Address already in use */
+-#define NSOS_MID_ECONNABORTED 113 /**< Software caused connection abort */
+-#define NSOS_MID_ENETUNREACH 114  /**< Network is unreachable */
+-#define NSOS_MID_ENETDOWN 115     /**< Network is down */
+-#define NSOS_MID_ETIMEDOUT 116    /**< Connection timed out */
+-#define NSOS_MID_EHOSTDOWN 117    /**< Host is down */
+-#define NSOS_MID_EHOSTUNREACH 118 /**< No route to host */
+-#define NSOS_MID_EINPROGRESS 119  /**< Operation now in progress */
+-#define NSOS_MID_EALREADY 120     /**< Operation already in progress */
+-#define NSOS_MID_EDESTADDRREQ 121 /**< Destination address required */
+-#define NSOS_MID_EMSGSIZE 122        /**< Message size */
+-#define NSOS_MID_EPROTONOSUPPORT 123 /**< Protocol not supported */
+-#define NSOS_MID_ESOCKTNOSUPPORT 124 /**< Socket type not supported */
+-#define NSOS_MID_EADDRNOTAVAIL 125   /**< Can't assign requested address */
+-#define NSOS_MID_ENETRESET 126       /**< Network dropped connection on reset */
+-#define NSOS_MID_EISCONN 127         /**< Socket is already connected */
+-#define NSOS_MID_ENOTCONN 128        /**< Socket is not connected */
+-#define NSOS_MID_ETOOMANYREFS 129    /**< Too many references: can't splice */
+-#define NSOS_MID_ENOTSUP 134         /**< Unsupported value */
+-#define NSOS_MID_EILSEQ 138          /**< Illegal byte sequence */
+-#define NSOS_MID_EOVERFLOW 139       /**< Value overflow */
+-#define NSOS_MID_ECANCELED 140       /**< Operation canceled */
+-
+-int errno_to_nsos_mid(int err);
+-int errno_from_nsos_mid(int err);
+-
+-#endif /* __DRIVERS_NET_NSOS_ERRNO_H__ */
+diff --git a/drivers/net/nsos_fcntl.c b/drivers/net/nsos_fcntl.c
+index ab4d22ce51a..ad6a61285c9 100644
+--- a/drivers/net/nsos_fcntl.c
++++ b/drivers/net/nsos_fcntl.c
+@@ -25,7 +25,7 @@
+ #include <fcntl.h>
+ #endif
+ 
+-#include "nsos_errno.h"
++#include "nsi_errno.h"
+ #include "nsos_fcntl.h"
+ 
+ #include <stdbool.h>
+@@ -51,7 +51,7 @@ static int fl_to_nsos_mid_(int flags, bool strict)
+ #undef TO_NSOS_MID
+ 
+ 	if (strict && flags != 0) {
+-		return -NSOS_MID_EINVAL;
++		return -NSI_ERRNO_MID_EINVAL;
+ 	}
+ 
+ 	return flags_mid;
+diff --git a/drivers/net/nsos_sockets.c b/drivers/net/nsos_sockets.c
+index 7aa4e3cb924..7820bcd1fc8 100644
+--- a/drivers/net/nsos_sockets.c
++++ b/drivers/net/nsos_sockets.c
+@@ -28,7 +28,7 @@ LOG_MODULE_REGISTER(nsos_sockets);
+ 
+ #include "sockets_internal.h"
+ #include "nsos.h"
+-#include "nsos_errno.h"
++#include "nsi_errno.h"
+ #include "nsos_fcntl.h"
+ #include "nsos_netdb.h"
+ #include "nsos_socket.h"
+@@ -79,7 +79,7 @@ static int socket_family_to_nsos_mid(int family, int *family_mid)
+ 		*family_mid = NSOS_MID_AF_PACKET;
+ 		break;
+ 	default:
+-		return -NSOS_MID_EAFNOSUPPORT;
++		return -NSI_ERRNO_MID_EAFNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -116,7 +116,7 @@ static int socket_proto_to_nsos_mid(int proto, int *proto_mid)
+ 		*proto_mid = NSOS_MID_IPPROTO_ETH_P_ALL;
+ 		break;
+ 	default:
+-		return -NSOS_MID_EPROTONOSUPPORT;
++		return -NSI_ERRNO_MID_EPROTONOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -135,7 +135,7 @@ static int socket_type_to_nsos_mid(int type, int *type_mid)
+ 		*type_mid = NSOS_MID_SOCK_RAW;
+ 		break;
+ 	default:
+-		return -NSOS_MID_ESOCKTNOSUPPORT;
++		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -155,7 +155,7 @@ static int socket_flags_to_nsos_mid(int flags)
+ 				 &flags_mid, NSOS_MID_MSG_WAITALL);
+ 
+ 	if (flags != 0) {
+-		return -NSOS_MID_EINVAL;
++		return -NSI_ERRNO_MID_EINVAL;
+ 	}
+ 
+ 	return flags_mid;
+@@ -174,19 +174,19 @@ static int nsos_socket_create(int family, int type, int proto)
+ 
+ 	err = socket_family_to_nsos_mid(family, &family_mid);
+ 	if (err) {
+-		errno = errno_from_nsos_mid(-err);
++		errno = nsi_errno_from_mid(-err);
+ 		return -1;
+ 	}
+ 
+ 	err = socket_type_to_nsos_mid(type, &type_mid);
+ 	if (err) {
+-		errno = errno_from_nsos_mid(-err);
++		errno = nsi_errno_from_mid(-err);
+ 		return -1;
+ 	}
+ 
+ 	err = socket_proto_to_nsos_mid(proto, &proto_mid);
+ 	if (err) {
+-		errno = errno_from_nsos_mid(-err);
++		errno = nsi_errno_from_mid(-err);
+ 		return -1;
+ 	}
+ 
+@@ -207,7 +207,7 @@ static int nsos_socket_create(int family, int type, int proto)
+ 
+ 	sock->poll.mid.fd = nsos_adapt_socket(family_mid, type_mid, proto_mid);
+ 	if (sock->poll.mid.fd < 0) {
+-		errno = errno_from_nsos_mid(-sock->poll.mid.fd);
++		errno = nsi_errno_from_mid(-sock->poll.mid.fd);
+ 		goto free_sock;
+ 	}
+ 
+@@ -226,7 +226,7 @@ free_fd:
+ 
+ static int nsos_adapt_get_zephyr_errno(void)
+ {
+-	return errno_from_nsos_mid(nsos_adapt_get_errno());
++	return nsi_errno_from_mid(nsos_adapt_get_errno());
+ }
+ 
+ static ssize_t nsos_read(void *obj, void *buf, size_t sz)
+@@ -395,12 +395,12 @@ static int nsos_ioctl(void *obj, unsigned int request, va_list args)
+ 
+ 		ret = fl_to_nsos_mid_strict(flags);
+ 		if (ret < 0) {
+-			return -errno_from_nsos_mid(-ret);
++			return -nsi_errno_from_mid(-ret);
+ 		}
+ 
+ 		ret = nsos_adapt_fcntl_setfl(sock->poll.mid.fd, flags);
+ 
+-		return -errno_from_nsos_mid(-ret);
++		return -nsi_errno_from_mid(-ret);
+ 	}
+ 
+ 	case ZFD_IOCTL_FIONREAD: {
+@@ -409,7 +409,7 @@ static int nsos_ioctl(void *obj, unsigned int request, va_list args)
+ 
+ 		ret = nsos_adapt_fionread(sock->poll.mid.fd, avail);
+ 
+-		return -errno_from_nsos_mid(-ret);
++		return -nsi_errno_from_mid(-ret);
+ 	}
+ 	}
+ 
+@@ -434,7 +434,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 			(struct nsos_mid_sockaddr_in *)*addr_mid;
+ 
+ 		if (addrlen < sizeof(*addr_in)) {
+-			return -NSOS_MID_EINVAL;
++			return -NSI_ERRNO_MID_EINVAL;
+ 		}
+ 
+ 		addr_in_mid->sin_family = NSOS_MID_AF_INET;
+@@ -452,7 +452,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 			(struct nsos_mid_sockaddr_in6 *)*addr_mid;
+ 
+ 		if (addrlen < sizeof(*addr_in)) {
+-			return -NSOS_MID_EINVAL;
++			return -NSI_ERRNO_MID_EINVAL;
+ 		}
+ 
+ 		addr_in_mid->sin6_family = NSOS_MID_AF_INET6;
+@@ -472,7 +472,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 			(struct nsos_mid_sockaddr_un *)*addr_mid;
+ 
+ 		if (addrlen < sizeof(*addr_un)) {
+-			return -NSOS_MID_EINVAL;
++			return -NSI_ERRNO_MID_EINVAL;
+ 		}
+ 
+ 		addr_un_mid->sun_family = NSOS_MID_AF_UNIX;
+@@ -490,7 +490,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 			(struct nsos_mid_sockaddr_ll *)*addr_mid;
+ 
+ 		if (addrlen < sizeof(*addr_ll)) {
+-			return -NSOS_MID_EINVAL;
++			return -NSI_ERRNO_MID_EINVAL;
+ 		}
+ 
+ 		addr_ll_mid->sll_family = NSOS_MID_AF_UNIX;
+@@ -508,7 +508,7 @@ static int sockaddr_to_nsos_mid(const struct sockaddr *addr, socklen_t addrlen,
+ 	}
+ 	}
+ 
+-	return -NSOS_MID_EINVAL;
++	return -NSI_ERRNO_MID_EINVAL;
+ }
+ 
+ static int sockaddr_from_nsos_mid(struct sockaddr *addr, socklen_t *addrlen,
+@@ -551,7 +551,7 @@ static int sockaddr_from_nsos_mid(struct sockaddr *addr, socklen_t *addrlen,
+ 	}
+ 	}
+ 
+-	return -NSOS_MID_EINVAL;
++	return -NSI_ERRNO_MID_EINVAL;
+ }
+ 
+ static int nsos_wait_for_poll(struct nsos_socket *sock, int events,
+@@ -598,7 +598,7 @@ close_dup:
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		return -errno_to_nsos_mid(-ret);
++		return -nsi_errno_to_mid(-ret);
+ 	}
+ 
+ 	return 0;
+@@ -641,7 +641,7 @@ static int nsos_bind(void *obj, const struct sockaddr *addr, socklen_t addrlen)
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -662,7 +662,7 @@ static int nsos_connect_blocking(struct nsos_socket *sock,
+ 	}
+ 
+ 	ret = nsos_adapt_connect(sock->poll.mid.fd, addr_mid, addrlen_mid);
+-	if (ret == -NSOS_MID_EINPROGRESS) {
++	if (ret == -NSI_ERRNO_MID_EINPROGRESS) {
+ 		int so_err;
+ 		size_t so_err_len = sizeof(so_err);
+ 
+@@ -713,7 +713,7 @@ static int nsos_connect(void *obj, const struct sockaddr *addr, socklen_t addrle
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -727,7 +727,7 @@ static int nsos_listen(void *obj, int backlog)
+ 
+ 	ret = nsos_adapt_listen(sock->poll.mid.fd, backlog);
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -765,13 +765,13 @@ static int nsos_accept(void *obj, struct sockaddr *addr, socklen_t *addrlen)
+ 
+ 	zephyr_fd = zvfs_reserve_fd();
+ 	if (zephyr_fd < 0) {
+-		ret = -errno_to_nsos_mid(-zephyr_fd);
++		ret = -nsi_errno_to_mid(-zephyr_fd);
+ 		goto close_adapt_fd;
+ 	}
+ 
+ 	conn_sock = k_malloc(sizeof(*conn_sock));
+ 	if (!conn_sock) {
+-		ret = -NSOS_MID_ENOMEM;
++		ret = -NSI_ERRNO_MID_ENOMEM;
+ 		goto free_zephyr_fd;
+ 	}
+ 
+@@ -790,7 +790,7 @@ close_adapt_fd:
+ 	nsi_host_close(adapt_fd);
+ 
+ return_ret:
+-	errno = errno_from_nsos_mid(-ret);
++	errno = nsi_errno_from_mid(-ret);
+ 	return -1;
+ }
+ 
+@@ -826,7 +826,7 @@ static ssize_t nsos_sendto(void *obj, const void *buf, size_t len, int flags,
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -858,7 +858,7 @@ static ssize_t nsos_sendmsg(void *obj, const struct msghdr *msg, int flags)
+ 
+ 	msg_iov = k_calloc(msg->msg_iovlen, sizeof(*msg_iov));
+ 	if (!msg_iov) {
+-		ret = -NSOS_MID_ENOMEM;
++		ret = -NSI_ERRNO_MID_ENOMEM;
+ 		goto return_ret;
+ 	}
+ 
+@@ -887,7 +887,7 @@ free_msg_iov:
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -926,7 +926,7 @@ static ssize_t nsos_recvfrom(void *obj, void *buf, size_t len, int flags,
+ 
+ return_ret:
+ 	if (ret < 0) {
+-		errno = errno_from_nsos_mid(-ret);
++		errno = nsi_errno_from_mid(-ret);
+ 		return -1;
+ 	}
+ 
+@@ -952,7 +952,7 @@ static int socket_type_from_nsos_mid(int type_mid, int *type)
+ 		*type = SOCK_RAW;
+ 		break;
+ 	default:
+-		return -NSOS_MID_ESOCKTNOSUPPORT;
++		return -NSI_ERRNO_MID_ESOCKTNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -989,7 +989,7 @@ static int socket_proto_from_nsos_mid(int proto_mid, int *proto)
+ 		*proto = htons(IPPROTO_ETH_P_ALL);
+ 		break;
+ 	default:
+-		return -NSOS_MID_EPROTONOSUPPORT;
++		return -NSI_ERRNO_MID_EPROTONOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -1014,7 +1014,7 @@ static int socket_family_from_nsos_mid(int family_mid, int *family)
+ 		*family = AF_PACKET;
+ 		break;
+ 	default:
+-		return -NSOS_MID_EAFNOSUPPORT;
++		return -NSI_ERRNO_MID_EAFNOSUPPORT;
+ 	}
+ 
+ 	return 0;
+@@ -1034,7 +1034,7 @@ static int nsos_getsockopt_int(struct nsos_socket *sock, int nsos_mid_level, int
+ 	err = nsos_adapt_getsockopt(sock->poll.mid.fd, NSOS_MID_SOL_SOCKET,
+ 				    NSOS_MID_SO_KEEPALIVE, optval, &nsos_mid_optlen);
+ 	if (err) {
+-		errno = errno_from_nsos_mid(-err);
++		errno = nsi_errno_from_mid(-err);
+ 		return -1;
+ 	}
+ 
+@@ -1063,11 +1063,11 @@ static int nsos_getsockopt(void *obj, int level, int optname,
+ 			err = nsos_adapt_getsockopt(sock->poll.mid.fd, NSOS_MID_SOL_SOCKET,
+ 						    NSOS_MID_SO_ERROR, &nsos_mid_err, NULL);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+-			*(int *)optval = errno_from_nsos_mid(nsos_mid_err);
++			*(int *)optval = nsi_errno_from_mid(nsos_mid_err);
+ 
+ 			return 0;
+ 		}
+@@ -1083,13 +1083,13 @@ static int nsos_getsockopt(void *obj, int level, int optname,
+ 			err = nsos_adapt_getsockopt(sock->poll.mid.fd, NSOS_MID_SOL_SOCKET,
+ 						    NSOS_MID_SO_TYPE, &nsos_mid_type, NULL);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+ 			err = socket_type_from_nsos_mid(nsos_mid_type, optval);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1107,13 +1107,13 @@ static int nsos_getsockopt(void *obj, int level, int optname,
+ 			err = nsos_adapt_getsockopt(sock->poll.mid.fd, NSOS_MID_SOL_SOCKET,
+ 						    NSOS_MID_SO_PROTOCOL, &nsos_mid_proto, NULL);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+ 			err = socket_proto_from_nsos_mid(nsos_mid_proto, optval);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1131,13 +1131,13 @@ static int nsos_getsockopt(void *obj, int level, int optname,
+ 			err = nsos_adapt_getsockopt(sock->poll.mid.fd, NSOS_MID_SOL_SOCKET,
+ 						    NSOS_MID_SO_DOMAIN, &nsos_mid_family, NULL);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+ 			err = socket_family_from_nsos_mid(nsos_mid_family, optval);
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1214,7 +1214,7 @@ static int nsos_setsockopt_int(struct nsos_socket *sock, int nsos_mid_level, int
+ 	err = nsos_adapt_setsockopt(sock->poll.mid.fd, nsos_mid_level, nsos_mid_optname,
+ 				    optval, optlen);
+ 	if (err) {
+-		errno = errno_from_nsos_mid(-err);
++		errno = nsi_errno_from_mid(-err);
+ 		return -1;
+ 	}
+ 
+@@ -1244,7 +1244,7 @@ static int nsos_setsockopt(void *obj, int level, int optname,
+ 						    NSOS_MID_SO_PRIORITY, &nsos_mid_priority,
+ 						    sizeof(nsos_mid_priority));
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1267,7 +1267,7 @@ static int nsos_setsockopt(void *obj, int level, int optname,
+ 						    NSOS_MID_SO_RCVTIMEO, &nsos_mid_tv,
+ 						    sizeof(nsos_mid_tv));
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1296,7 +1296,7 @@ static int nsos_setsockopt(void *obj, int level, int optname,
+ 						    NSOS_MID_SO_SNDTIMEO, &nsos_mid_tv,
+ 						    sizeof(nsos_mid_tv));
+ 			if (err) {
+-				errno = errno_from_nsos_mid(-err);
++				errno = nsi_errno_from_mid(-err);
+ 				return -1;
+ 			}
+ 
+@@ -1512,7 +1512,7 @@ static int nsos_getaddrinfo(const char *node, const char *service,
+ 				     &system_errno);
+ 	if (ret < 0) {
+ 		if (ret == NSOS_MID_EAI_SYSTEM) {
+-			errno = errno_from_nsos_mid(system_errno);
++			errno = nsi_errno_from_mid(system_errno);
+ 		}
+ 
+ 		return eai_from_nsos_mid(ret);
+-- 
+2.50.1
+
