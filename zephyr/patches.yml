@@ -63,3 +63,43 @@ patches:
     date: 2025-02-26
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
+  - path: zephyr/zephyr/0009-drivers-nsos-Use-native-simulator-errno-conversion.patch
+    sha256sum: a4bd24f61846f0c4b9848e1a6cb0233720d867c47ffb1abdc99c9eaf262dd11b
+    module: zephyr
+    author: Alberto Escolar Piedras
+    email: alberto.escolar.piedras@nordicsemi.no
+    date: 2025-02-24
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
+  - path: zephyr/zephyr/0010-nsi-move-nsos_fcntl-to-more-generic-nsi_fcntl.patch
+    sha256sum: 01a73074a3e673ee5618a10edb366f6bead53ff06b552fecd86c9e8323884fdc
+    module: zephyr
+    author: Marcin Niestroj
+    email: m.niestroj@emb.dev
+    date: 2025-08-05
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
+  - path: zephyr/zephyr/0011-nsi-fcntl-add-O_CREAT-and-O_TRUNC.patch
+    sha256sum: e1d77d84f84fb7904559b083270875c73e2d38f6567503eb5a7ca580c5397682
+    module: zephyr
+    author: Marcin Niestroj
+    email: m.niestroj@emb.dev
+    date: 2025-08-14
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
+  - path: zephyr/zephyr/0012-subsys-fs-nsim_mount-new-FS-for-mounting-host-filesy.patch
+    sha256sum: ddad24efe17347947fe86d0e5b000e343c907b2e8dcfe526a0d36c7d0d99983e
+    module: zephyr
+    author: Marcin Niestroj
+    email: m.niestroj@emb.dev
+    date: 2025-08-14
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
+  - path: zephyr/zephyr/0013-tests-fs-nsim_mount-add-basic-tests-for-implemented-.patch
+    sha256sum: 17d5c28831de1b2218aea89cb343f0e36822cc2419f5b60b94d6f57a428b67e7
+    module: zephyr
+    author: Marcin Niestroj
+    email: m.niestroj@emb.dev
+    date: 2025-08-05
+    apply-command: >-
+      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
