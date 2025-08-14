@@ -198,6 +198,23 @@ At this stage `native_sim` will connect to cloud using native networking
 (via Native Simulator Offloaded Sockets) and still be able to find local
 Bluetooth devices, communicate with them and send requested pouches.
 
+### Aludel Elixir
+
+Bluetooth HCI image must be installed on the ESP32-C3 that's on-
+board, following directions in [the Golioth Boards installation
+instructions](https://github.com/golioth/golioth-zephyr-boards?tab=readme-ov-file#flashing-the-espressif-bluetooth-hci-sample)
+
+Gateway firmware runs on nRF9160 chip and mirrors the nRF9160-DK.
+An external programmer like a JLink is required using the SWD
+10 pin header.
+
+```
+west build -p -b aludel_elixir/nrf9160/ns bluetooth-gateway/gateway --sysbuild
+west flash
+```
+
+
+
 ## Useful options for debugging and development
 
 ### `CONFIG_GATEWAY_CLOUD`
