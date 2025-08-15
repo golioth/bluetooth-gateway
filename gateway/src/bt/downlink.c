@@ -63,6 +63,12 @@ static int write_downlink_characteristic(struct bt_conn *conn)
         return ret;
     }
 
+    if (0 == len)
+    {
+        LOG_DBG("No downlink data available");
+        return -ENODATA;
+    }
+
     params->func = write_response_cb;
     params->handle = downlink_handle;
     params->offset = 0;
@@ -106,7 +112,7 @@ static void write_response_cb(struct bt_conn *conn,
     else
     {
         int ret = write_downlink_characteristic(conn);
-        if (0 != ret)
+        if (0 != ret && -ENODATA != ret)
         {
             downlink_abort(node->downlink_ctx);
             golioth_ble_gatt_packetizer_finish(node->packetizer);
