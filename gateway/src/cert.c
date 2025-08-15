@@ -150,6 +150,7 @@ void cert_module_on_connected(struct golioth_client *client)
         if (status != GOLIOTH_OK)
         {
             LOG_ERR("Failed to download server certificate: %d", status);
+            return;
         }
 
         server_crt_update(len);
