@@ -76,7 +76,8 @@ static void device_found(const bt_addr_le_t *addr,
     int err;
 
     /* We're only interested in connectable events */
-    if (type != BT_GAP_ADV_TYPE_ADV_IND && type != BT_GAP_ADV_TYPE_ADV_DIRECT_IND)
+    if (type != BT_GAP_ADV_TYPE_ADV_IND && type != BT_GAP_ADV_TYPE_ADV_DIRECT_IND
+        && type != BT_GAP_ADV_TYPE_SCAN_RSP)
     {
         return;
     }
@@ -114,8 +115,7 @@ void gateway_scan_start(void)
 {
     int err;
 
-    /* This demo doesn't require active scan */
-    err = bt_le_scan_start(BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_PASSIVE,
+    err = bt_le_scan_start(BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_ACTIVE,
                                             BT_LE_SCAN_OPT_NONE,
                                             BT_GAP_SCAN_FAST_INTERVAL_MIN,
                                             BT_GAP_SCAN_FAST_WINDOW),
