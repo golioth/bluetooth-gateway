@@ -26,6 +26,7 @@ struct downlink_context
     size_t offset;
     bool complete;
     bool aborted;
+    bool client_waiting;
 };
 
 static struct golioth_client *_client;
@@ -69,9 +70,10 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
     }
     k_fifo_put(&downlink->block_queue, block);
 
-    if (NULL == downlink->current_block)
+    if (NULL == downlink->current_block && downlink->client_waiting)
     {
         downlink->data_available_cb(downlink->cb_arg);
+        downlink->client_waiting = false;
     }
 
     return GOLIOTH_OK;
@@ -116,6 +118,7 @@ struct downlink_context *downlink_init(downlink_data_available_cb data_available
         downlink->offset = 0;
         downlink->complete = false;
         downlink->aborted = false;
+        downlink->client_waiting = true;
         k_fifo_init(&downlink->block_queue);
     }
 
@@ -146,6 +149,12 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
                     /* We have aborted the downlink and the block queue is empty */
                     *is_last = true;
                     return 0;
+                }
+                if (0 == *dst_len)
+                {
+                    /* We could not provide any data to the client, so we will
+                       notify them the next time we receive a block */
+                    downlink->client_waiting = true;
                 }
                 return -EAGAIN;
             }
