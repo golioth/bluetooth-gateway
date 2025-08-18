@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 
 #include <golioth/gateway.h>
 
@@ -17,6 +18,14 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(downlink);
 
+enum
+{
+    DOWNLINK_FLAG_COMPLETE,
+    DOWNLINK_FLAG_ABORTED,
+    DOWNLINK_FLAG_CLIENT_WAITING,
+    DOWNLINK_FLAG_COUNT,
+};
+
 struct downlink_context
 {
     downlink_data_available_cb data_available_cb;
@@ -24,9 +33,7 @@ struct downlink_context
     struct k_fifo block_queue;
     struct block *current_block;
     size_t offset;
-    bool complete;
-    bool aborted;
-    bool client_waiting;
+    ATOMIC_DEFINE(flags, DOWNLINK_FLAG_COUNT);
 };
 
 static struct golioth_client *_client;
@@ -46,7 +53,7 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
 {
     struct downlink_context *downlink = arg;
 
-    if (downlink->aborted)
+    if (atomic_test_bit(downlink->flags, DOWNLINK_FLAG_ABORTED))
     {
         flush_block_queue(&downlink->block_queue);
         downlink_finish(downlink);
@@ -70,10 +77,10 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
     }
     k_fifo_put(&downlink->block_queue, block);
 
-    if (NULL == downlink->current_block && downlink->client_waiting)
+    if (NULL == downlink->current_block
+        && atomic_test_and_clear_bit(downlink->flags, DOWNLINK_FLAG_CLIENT_WAITING))
     {
         downlink->data_available_cb(downlink->cb_arg);
-        downlink->client_waiting = false;
     }
 
     return GOLIOTH_OK;
@@ -116,9 +123,9 @@ struct downlink_context *downlink_init(downlink_data_available_cb data_available
         downlink->cb_arg = cb_arg;
         downlink->current_block = NULL;
         downlink->offset = 0;
-        downlink->complete = false;
-        downlink->aborted = false;
-        downlink->client_waiting = true;
+        atomic_clear_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
+        atomic_clear_bit(downlink->flags, DOWNLINK_FLAG_ABORTED);
+        atomic_set_bit(downlink->flags, DOWNLINK_FLAG_CLIENT_WAITING);
         k_fifo_init(&downlink->block_queue);
     }
 
@@ -129,7 +136,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
 {
     *is_last = false;
 
-    if (downlink->complete)
+    if (downlink_is_complete(downlink))
     {
         return -ENODATA;
     }
@@ -144,7 +151,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
             if (NULL == downlink->current_block)
             {
                 *dst_len = total_bytes_copied;
-                if (downlink->aborted)
+                if (atomic_test_bit(downlink->flags, DOWNLINK_FLAG_ABORTED))
                 {
                     /* We have aborted the downlink and the block queue is empty */
                     *is_last = true;
@@ -154,7 +161,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
                 {
                     /* We could not provide any data to the client, so we will
                        notify them the next time we receive a block */
-                    downlink->client_waiting = true;
+                    atomic_set_bit(downlink->flags, DOWNLINK_FLAG_CLIENT_WAITING);
                 }
                 return -EAGAIN;
             }
@@ -179,7 +186,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
 
             if (*is_last)
             {
-                downlink->complete = true;
+                atomic_set_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
                 break;
             }
         }
@@ -191,7 +198,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
 
 bool downlink_is_complete(const struct downlink_context *downlink)
 {
-    return downlink->complete;
+    return atomic_test_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
 }
 
 void downlink_finish(struct downlink_context *downlink)
@@ -209,11 +216,11 @@ void downlink_abort(struct downlink_context *downlink)
     /* Downlink will be aborted after the current in flight CoAP
        block request is completed. */
 
-    downlink->aborted = true;
+    atomic_set_bit(downlink->flags, DOWNLINK_FLAG_ABORTED);
 
     /* If there are no more blocks, then just cleanup */
 
-    if (downlink->complete)
+    if (downlink_is_complete(downlink))
     {
         downlink_finish(downlink);
     }
