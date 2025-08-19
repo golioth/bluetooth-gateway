@@ -146,7 +146,7 @@ void cert_module_on_connected(struct golioth_client *client)
     if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
     {
         size_t len = sizeof(server_crt_buf);
-        status = golioth_gateway_server_cert_get(client, server_crt_buf, &len, 5);
+        status = golioth_gateway_server_cert_get(client, server_crt_buf, &len);
         if (status != GOLIOTH_OK)
         {
             LOG_ERR("Failed to download server certificate: %d", status);
