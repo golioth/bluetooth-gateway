@@ -58,6 +58,11 @@ config PERIPHERAL_BLE_GATT_EXAMPLE_NUM
 
 endmenu
 
+config PERIPHERAL_MOUNT_CREDS
+	bool "Mount credentials under /creds directory"
+	help
+	  Mount credentials located ${BUILD_DIR}/creds under /creds mountpoint in Zephyr.
+
 choice BOOTLOADER
 	default BOOTLOADER_MCUBOOT if SOC != "native"
 endchoice
