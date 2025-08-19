@@ -40,6 +40,12 @@ if(BOARD MATCHES "bsim")
 
         # Override boot banner string for easier identification
         set_config_string(${target_name} CONFIG_BOOT_BANNER_STRING "Booting ${target_name}")
+
+        # Mount /creds, which need to be generated before running BabbleSim
+        if(SB_CONFIG_PERIPHERAL_MOUNT_CREDS)
+          set_config_string(${target_name} CONFIG_NATIVE_EXTRA_CMDLINE_ARGS "-volume=creds:/creds")
+          set_config_string(${target_name} CONFIG_EXAMPLE_CREDENTIALS_DIR "/creds")
+        endif()
       endforeach()
     endif()
   endfunction()
