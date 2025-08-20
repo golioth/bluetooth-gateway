@@ -42,8 +42,8 @@ Bluetooth controller is running on the nRF5340 NET core. This means that proper
 firmware needs to be flashed (HCI controller over UART) in order to
 access Bluetooth from nRF9151 chip.
 
-This is done by by changing `SWD` switch from `nRF91` to `nRF53` on
-Thingy, then building and flashing firmware with:
+This is done by by changing `SWD` switch (`SW2`) from `nRF91` to `nRF53`
+on Thingy, then building and flashing firmware with:
 
 ```
 west build -p -b thingy91x/nrf5340/cpunet bluetooth-gateway/controller --sysbuild -- -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
