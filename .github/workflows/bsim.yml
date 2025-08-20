@@ -1,0 +1,64 @@
+name: "BabbleSim integration tests"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bsim:
+    container: golioth/golioth-zephyr-base:0.17.0-SDK-v0
+    env:
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: bluetooth-gateway
+
+      - name: Init and update west
+        run: |
+          west init -l bluetooth-gateway --mf west-zephyr.yml
+          west update --narrow -o=--depth=1
+          git config --global user.email user@git-scm.com
+          git config --global user.name "Git User"
+          west patch apply
+
+      - name: Build BabbleSim tools
+        run: |
+          cd tools/bsim && make everything -j $(nproc)
+
+          echo "BSIM_OUT_PATH=$(west topdir)/tools/bsim/" >> $GITHUB_ENV
+          echo "BSIM_COMPONENTS_PATH=$(west topdir)/tools/bsim/components/" >> $GITHUB_ENV
+
+      - name: Install pip packages
+        run: |
+          uv pip install                                  \
+            -r pouch/requirements.txt                     \
+            -r zephyr/scripts/requirements-base.txt       \
+            -r zephyr/scripts/requirements-build-test.txt \
+            -r zephyr/scripts/requirements-run-test.txt   \
+            cryptography==41.0.7                          \
+            pyasn1                                        \
+            pyyaml                                        \
+            cbor>=1.0.0                                   \
+            imgtool>=1.9.0                                \
+            jinja2                                        \
+            click                                         \
+            git+https://github.com/golioth/python-golioth-tools@v0.7.0
+
+      - name: Build and run
+        shell: bash
+        run: |
+          west twister                                                      \
+            -c -v -W                                                        \
+            -p nrf52_bsim/native                                            \
+            -T bluetooth-gateway/gateway/                                   \
+            --pytest-args="--api-url=https://api.golioth.dev"               \
+            --pytest-args="--api-key=${{ secrets.DEV_CI_PROJECT_API_KEY }}"
