@@ -2,7 +2,7 @@
 
 ## Setup
 
-NCS for `nrf9160dk`:
+NCS for `thingy91x` and `nrf9160dk`:
 
 ```
 west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-ncs.yml
