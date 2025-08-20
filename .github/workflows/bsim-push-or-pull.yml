@@ -1,0 +1,20 @@
+name: "BabbleSim integration tests - push or pull request"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bsim-push-or-pull:
+    uses: ./.github/workflows/bsim.yml
+    with:
+      api_url: "https://api.golioth.io"
+      api_key_id: "PROD_CI_PROJECT_API_KEY"
+      coap_gateway_url: "coaps://coap.golioth.io"
+    secrets: inherit
