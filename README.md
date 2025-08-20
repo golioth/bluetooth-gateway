@@ -6,6 +6,31 @@ communication between Bluetooth nodes and cloud is end-to-end encrypted
 and authenticated. This means that gateway serves as untrusted two-way
 channel between Bluetooth devices and Golioth cloud.
 
+## Flash precompiled binaries
+
+### nRF9160 DK
+
+Bluetooth controller is running on nRF52840. This means that proper
+firmware needs to be flashed (HCI controller over UART) in order to
+access Bluetooth from nRF9160 chip.
+
+This is done by by changing `SWD` switch (`SW10`) from `nRF91` to
+`nRF52` on development kit, then downloading and flashing firmware with:
+
+```
+wget https://github.com/golioth/bluetooth-gateway/releases/latest/download/nrf9160dk_nrf52840.hex -O nrf9160dk_nrf52840.hex
+nrfutil device program --firmware nrf9160dk_nrf52840.hex --x-family nrf52
+```
+
+Gateway firmware runs on nRF9160 chip. There is direct access to LTE
+modem and also Bluetooth Host stack, which communicates with Bluetooth
+Controller over UART. Download and flash it with:
+
+```
+wget https://github.com/golioth/bluetooth-gateway/releases/latest/download/nrf9160dk_nrf9160.hex -O nrf9160dk_nrf9160.hex
+nrfutil device program --firmware nrf9160dk_nrf9160.hex --x-family nrf91
+```
+
 ## Setup
 
 Setup repo with NCS:
