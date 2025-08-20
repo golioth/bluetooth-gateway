@@ -124,6 +124,17 @@ static void process_uplink(struct pouch_uplink *uplink)
         return;
     }
 
+    if (uplink->rblock->len == 0)
+    {
+        LOG_WRN("Skipping zero length block");
+
+        free(uplink->rblock);
+        uplink->rblock = NULL;
+        atomic_clear_bit(&uplink->flags, POUCH_UPLINK_SENDING);
+
+        return;
+    }
+
     status = golioth_gateway_uplink_block(uplink->session,
                                           uplink->block_idx++,
                                           uplink->rblock->data,
