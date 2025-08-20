@@ -65,8 +65,8 @@ Bluetooth controller is running on nRF52840. This means that proper
 firmware needs to be flashed (HCI controller over UART) in order to
 access Bluetooth from nRF9160 chip.
 
-This is done by by changing `SWD` switch from `nRF91` to `nRF52` on
-development kit, then building and flashing firmware with:
+This is done by by changing `SWD` switch (`SW10`) from `nRF91` to
+`nRF52` on development kit, then building and flashing firmware with:
 
 ```
 west build -p -b nrf9160dk/nrf52840 bluetooth-gateway/controller
