@@ -1,5 +1,11 @@
 # Golioth Bluetooth Gateway
 
+Golioth Bluetooth Gateway is a device capable of connecting to Golioth
+cloud and serving as proxy for Bluetooth-only devices (nodes). All
+communication between Bluetooth nodes and cloud is end-to-end encrypted
+and authenticated. This means that gateway serves as untrusted two-way
+channel between Bluetooth devices and Golioth cloud.
+
 ## Setup
 
 NCS for `thingy91x` and `nrf9160dk`:
