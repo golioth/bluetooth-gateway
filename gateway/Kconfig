@@ -28,7 +28,7 @@ endif # GATEWAY_CLOUD
 
 config GATEWAY_NUM_BLOCKS
     int "Number of blocks in downlink/uplink buffer"
-    default 32
+    default 10
     help
       The number of blocks available for buffering uplink or downlink
       data between a node device and the cloud. Each block is equal
