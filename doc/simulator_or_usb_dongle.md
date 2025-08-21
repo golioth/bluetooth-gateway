@@ -54,7 +54,6 @@ BabbleSim components) is done with following commands:
 
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -Dgateway_CONFIG_GOLIOTH_COAP_HOST_URI='"coaps://coap.golioth.dev"' \
   -Dperipheral_ble_gatt_example_0_CONFIG_EXAMPLE_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"'
 west flash
 ```
@@ -63,7 +62,6 @@ It is possible to include more BLE GATT nodes in simulation. Example of
 running 2 nodes:
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -Dgateway_CONFIG_GOLIOTH_COAP_HOST_URI='"coaps://coap.golioth.dev"' \
   -DSB_CONFIG_PERIPHERAL_BLE_GATT_EXAMPLE_NUM=2 \
   -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
   -Dperipheral_ble_gatt_example_1_CONFIG_POUCH_DEVICE_ID='"bbbbbbbbbbbbbbbbbbbbbbbb"'
@@ -76,7 +74,6 @@ is support for vanilla Zephyr peripheral sample
 
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -Dgateway_CONFIG_GOLIOTH_COAP_HOST_URI='"coaps://coap.golioth.dev"' \
   -DSB_CONFIG_PERIPHERAL_ZEPHYR=y \
   -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"'
 west flash
