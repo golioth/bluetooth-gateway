@@ -155,6 +155,7 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
                 {
                     /* We have aborted the downlink and the block queue is empty */
                     *is_last = true;
+                    atomic_set_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
                     return 0;
                 }
                 if (0 == *dst_len)
