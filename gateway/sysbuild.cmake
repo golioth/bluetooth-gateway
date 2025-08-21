@@ -1,4 +1,6 @@
-if(NOT SB_CONFIG_GATEWAY_CLOUD)
+if(SB_CONFIG_GATEWAY_CLOUD)
+  set_config_string(${DEFAULT_IMAGE} CONFIG_GOLIOTH_COAP_HOST_URI "${SB_CONFIG_GOLIOTH_COAP_HOST_URI}")
+else()
   set_config_bool(${DEFAULT_IMAGE} CONFIG_GATEWAY_CLOUD n)
 endif()
 
@@ -45,6 +47,11 @@ if(BOARD MATCHES "bsim")
         if(SB_CONFIG_PERIPHERAL_MOUNT_CREDS)
           set_config_string(${target_name} CONFIG_NATIVE_EXTRA_CMDLINE_ARGS "-volume=creds:/creds")
           set_config_string(${target_name} CONFIG_EXAMPLE_CREDENTIALS_DIR "/creds")
+        endif()
+
+        if(name STREQUAL "ble_gatt_example" AND
+           SB_CONFIG_GOLIOTH_COAP_HOST_URI STREQUAL "coaps://coap.golioth.dev")
+          set_config_string(${target_name} CONFIG_POUCH_SERVER_CERT_CN "pouch.golioth.dev")
         endif()
       endforeach()
     endif()

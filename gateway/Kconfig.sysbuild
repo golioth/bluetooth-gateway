@@ -11,6 +11,12 @@ config GATEWAY_CLOUD
 	  functionality without relying on communication with backend. All
 	  pouches received from Bluetooth nodes are dropped in that case.
 
+config GOLIOTH_COAP_HOST_URI
+	string "CoAP server URI"
+	default "coaps://coap.golioth.io"
+	help
+	  The URI of the CoAP server.
+
 endmenu
 
 menu "BabbleSim components"
