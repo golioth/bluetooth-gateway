@@ -63,7 +63,7 @@ static int write_downlink_characteristic(struct bt_conn *conn)
         return ret;
     }
 
-    if (0 == len)
+    if (GOLIOTH_BLE_GATT_PACKETIZER_EMPTY_PAYLOAD == ret)
     {
         LOG_DBG("No downlink data available");
         return -ENODATA;
