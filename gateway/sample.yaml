@@ -12,6 +12,7 @@ tests:
     integration_platforms:
       - nrf52_bsim
     extra_args:
+      - SB_CONFIG_GOLIOTH_COAP_HOST_URI_DEFAULT_DEV=y
       - SB_CONFIG_PERIPHERAL_MOUNT_CREDS=y
       - peripheral_ble_gatt_example_0_CONFIG_PICOLIBC=y
       - peripheral_ble_gatt_example_0_CONFIG_FILE_SYSTEM_NSIM_MOUNT=y

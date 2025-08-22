@@ -11,8 +11,18 @@ config GATEWAY_CLOUD
 	  functionality without relying on communication with backend. All
 	  pouches received from Bluetooth nodes are dropped in that case.
 
+config GOLIOTH_COAP_HOST_URI_DEFAULT_DEV
+	bool "Default to dev environment"
+	help
+	  Use dev environment by default. This option has the same effect as setting
+	  GOLIOTH_COAP_HOST_URI directly.
+
+	  It is used as workaround for unescaped string option override in
+	  sample.yaml, which is not applied correctly.
+
 config GOLIOTH_COAP_HOST_URI
 	string "CoAP server URI"
+	default "coaps://coap.golioth.dev" if GOLIOTH_COAP_HOST_URI_DEFAULT_DEV
 	default "coaps://coap.golioth.io"
 	help
 	  The URI of the CoAP server.
