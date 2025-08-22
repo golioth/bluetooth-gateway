@@ -107,3 +107,41 @@ jobs:
             build/${{ matrix.sysbuild && matrix.app || '' }}/zephyr/zephyr.elf
             build/${{ matrix.sysbuild && matrix.app || '' }}/zephyr/zephyr.map
             ${{ (matrix.sysbuild && (matrix.manifest == 'west-ncs.yml') && 'build/dfu_application.zip') || '' }}
+
+  release-artifacts:
+    name: Collect release artifacts
+    needs: [build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release
+
+          mv artifacts/gateway-nrf9160dk-nrf9160-ns/merged.hex \
+            release/nrf9160dk-nrf9160.hex
+          mv artifacts/controller-nrf9160dk-nrf52840/zephyr/zephyr.hex \
+            release/nrf9160dk-nrf52840.hex
+
+          mv artifacts/gateway-thingy91x-nrf9151-ns/merged.hex \
+            release/thingy91x-nrf9151.hex
+          mv artifacts/controller-thingy91x-nrf5340-cpunet/merged.hex \
+            release/thingy91x-nrf5340.hex
+
+          mv artifacts/gateway-frdm_rw612/zephyr.hex \
+            release/frdm_rw612.hex
+
+      - name: List release artifacts
+        run: |
+          ls release/*.hex
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            release/*.hex
