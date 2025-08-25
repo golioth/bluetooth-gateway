@@ -4,7 +4,7 @@ manifest:
   projects:
     - name: golioth
       path: modules/lib/golioth-firmware-sdk
-      revision: 14663e73d824a5638fd010d3bc0067ce5a5a08c6
+      revision: v0.20.0
       url: https://github.com/golioth/golioth-firmware-sdk.git
       import:
         file: west-ncs.yml
