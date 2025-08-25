@@ -14,9 +14,13 @@
 
 #include <gateway/bt/scan.h>
 
+#include <pouch/transport/ble_gatt/common/types.h>
+
 #include "cert.h"
 #include "downlink.h"
 #include "uplink.h"
+
+#include <git_describe.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
@@ -104,7 +108,8 @@ static inline void connect_to_cloud(void) {}
 
 int main(void)
 {
-    int err;
+    LOG_INF("Gateway Version: " STRINGIFY(GIT_DESCRIBE));
+    LOG_INF("Pouch BLE Transport Protocol Version: %d", GOLIOTH_BLE_GATT_VERSION);
 
     connect_to_cloud();
 
@@ -112,7 +117,7 @@ int main(void)
     pouch_uplink_init(client);
     downlink_module_init(client);
 
-    err = bt_enable(NULL);
+    int err = bt_enable(NULL);
     if (err)
     {
         LOG_ERR("Bluetooth init failed (err %d)", err);
