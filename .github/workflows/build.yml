@@ -109,4 +109,6 @@ jobs:
             build/${{ matrix.sysbuild && matrix.app || '' }}/zephyr/zephyr.map
             ${{ ((matrix.manifest == 'west-ncs.yml') && 'build/merged.hex') || '' }}
             ${{ ((matrix.manifest == 'west-thingy91x-controller.yml') && 'build/merged.hex') || '' }}
+            ${{ ((matrix.manifest == 'west-thingy91x-controller.yml') && 'build/merged_CPUAPP.hex') || '' }}
+            ${{ ((matrix.manifest == 'west-thingy91x-controller.yml') && 'build/empty_app_core/zephyr/zephyr.elf') || '' }}
             ${{ (matrix.sysbuild && (matrix.manifest == 'west-ncs.yml') && 'build/dfu_application.zip') || '' }}
