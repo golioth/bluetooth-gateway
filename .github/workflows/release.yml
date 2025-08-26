@@ -39,10 +39,14 @@ jobs:
             release/thingy91x_nrf9151.hex
           mv artifacts/gateway-thingy91x-nrf9151-ns/gateway/zephyr/zephyr.elf \
             release/thingy91x_nrf9151_ns.elf
+          mv artifacts/controller-thingy91x-nrf5340-cpunet/merged_CPUAPP.hex \
+            release/thingy91x_nrf5340_cpuapp.hex
+          mv artifacts/controller-thingy91x-nrf5340-cpunet/empty_app_core/zephyr/zephyr.elf \
+            release/thingy91x_nrf5340_cpuapp.elf
           mv artifacts/controller-thingy91x-nrf5340-cpunet/merged.hex \
-            release/thingy91x_nrf5340.hex
+            release/thingy91x_nrf5340_cpunet.hex
           mv artifacts/controller-thingy91x-nrf5340-cpunet/controller/zephyr/zephyr.elf \
-            release/thingy91x_nrf5340.elf
+            release/thingy91x_nrf5340_cpunet.elf
 
           mv artifacts/gateway-frdm_rw612/zephyr.hex \
             release/frdm_rw612.hex

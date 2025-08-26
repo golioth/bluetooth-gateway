@@ -60,10 +60,13 @@ CLI tool.
 
     a. Position the SWD selection switch (`SW2`) to `nRF53`
 
-    b. Issue the following command:
+    b. Issue the following command to program the `app` core:
     ```
-    nrfutil device program --firmware thingy91x_nrf5340.hex --x-family nrf53
+    nrfutil device program --firmware thingy91x_nrf5340_cpuapp.hex --x-family nrf53 --core application
     ```
+    c. Issue the following command to program the `net` core:
+    ```
+    nrfutil device program --firmware thingy91x_nrf5340_cpunet.hex --x-family nrf53 --core network
 3. Program the nRF9151 Gateway Firmware
 
     a. Power cycle the device and position the SWD selection switch (`SW2`) to
