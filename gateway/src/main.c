@@ -22,6 +22,10 @@
 
 #include <git_describe.h>
 
+#include <zephyr/net/conn_mgr_monitor.h>
+#include <zephyr/net/conn_mgr_connectivity.h>
+#include <zephyr/net/net_mgmt.h>
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
 
@@ -84,6 +88,53 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 }
 #endif /* CONFIG_NRF_MODEM */
 
+#ifdef CONFIG_NET_IPV4
+static K_SEM_DEFINE(network_connected, 0, 1)
+
+static struct net_mgmt_event_callback cb;
+
+#define L4_EVENT_MASK (NET_EVENT_DNS_SERVER_ADD | NET_EVENT_L4_DISCONNECTED)
+
+static void net_mgmt_cb(struct net_mgmt_event_callback *cb,
+                        uint32_t event,
+                        struct net_if *iface)
+{
+    switch (event) {
+	    case NET_EVENT_DNS_SERVER_ADD:
+		    LOG_INF("net_mgmt_cb: NET_EVENT_DNS_SERVER_ADD");
+		    k_sem_give(&network_connected);
+		    break;
+
+        case NET_EVENT_IPV4_ADDR_ADD:
+		    LOG_INF("net_mgmt_cb: NET_EVENT_IPV4_ADDR_ADD");
+		    break;
+
+	    case NET_EVENT_L4_DISCONNECTED:
+		    LOG_INF("net_mgmt_cb: NET_EVENT_L4_DISCONNECTED");
+		    break;
+
+        case NET_EVENT_L4_IPV4_CONNECTED:
+		    LOG_INF("net_mgmt_cb: NET_EVENT_L4_IPV4_CONNECTED");
+		    break;
+
+        default:
+		    LOG_INF("net_mgmt_cb: default");
+		    break;
+	}
+}
+
+void net_wait_for_ipv4(void)
+{
+    net_mgmt_init_event_callback(&cb, net_mgmt_cb, L4_EVENT_MASK);
+    net_mgmt_add_event_callback(&cb);
+    conn_mgr_mon_resend_status();
+
+    LOG_INF("Waiting for network...");
+
+    k_sem_take(&network_connected, K_FOREVER);
+}
+#endif /* CONFIG_NET_IPV4 */
+
 static void connect_to_cloud(void)
 {
 #if defined(CONFIG_NRF_MODEM)
@@ -92,6 +143,8 @@ static void connect_to_cloud(void)
 #else
 #if defined(CONFIG_NET_L2_ETHERNET) && defined(CONFIG_NET_DHCPV4)
     net_dhcpv4_start(net_if_get_default());
+#elif defined(CONFIG_NET_IPV4)
+    net_wait_for_ipv4();
 #endif
     connect_golioth_client();
 #endif
