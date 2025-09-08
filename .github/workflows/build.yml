@@ -36,9 +36,17 @@ jobs:
             extra_args: -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
           - manifest: west-zephyr.yml
             target: frdm_rw612
+            artifact_suffix: -ethernet
             app: gateway
             sysbuild: false
             blobs: hal_nxp
+          - manifest: west-zephyr.yml
+            target: frdm_rw612
+            artifact_suffix: -wifi
+            app: gateway
+            sysbuild: false
+            blobs: hal_nxp
+            extra_args: -DEXTRA_CONF_FILE=boards/frdm_rw612_wifi.conf
           - manifest: west-zephyr.yml
             target: native_sim
             app: gateway
@@ -89,6 +97,7 @@ jobs:
         id: build
         env:
           TARGET: ${{ matrix.target }}
+          SUFFIX: ${{ matrix.artifact_suffix }}
         shell: bash
         run: |
           west build \
@@ -97,7 +106,7 @@ jobs:
             ${{ matrix.sysbuild && '--sysbuild' || '--no-sysbuild' }} \
             -- -DCONFIG_COMPILER_WARNINGS_AS_ERRORS=y ${{ matrix.extra_args }}
 
-          echo "ARTIFACT_TARGET=${TARGET//\//-}" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_TARGET=${TARGET//\//-}${SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

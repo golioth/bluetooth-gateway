@@ -48,10 +48,14 @@ jobs:
           mv artifacts/controller-thingy91x-nrf5340-cpunet/controller/zephyr/zephyr.elf \
             release/thingy91x_nrf5340_cpunet.elf
 
-          mv artifacts/gateway-frdm_rw612/zephyr.hex \
-            release/frdm_rw612.hex
-          mv artifacts/gateway-frdm_rw612/zephyr.elf \
-            release/frdm_rw612.elf
+          mv artifacts/gateway-frdm_rw612-ethernet/zephyr.hex \
+            release/frdm_rw612-ethernet.hex
+          mv artifacts/gateway-frdm_rw612-ethernet/zephyr.elf \
+            release/frdm_rw612-ethernet.elf
+          mv artifacts/gateway-frdm_rw612-wifi/zephyr.hex \
+            release/frdm_rw612-wifi.hex
+          mv artifacts/gateway-frdm_rw612-wifi/zephyr.elf \
+            release/frdm_rw612-wifi.elf
 
       - name: List release artifacts
         run: |
