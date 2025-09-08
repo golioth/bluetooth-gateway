@@ -41,10 +41,29 @@ recommend using these binaries as the fastest way to get started.
     on Linux and MacOS.
 
     b. Issue the following commands in JLink Commander
+
+    If using Ethernet:
     ```
-    loadfile frdm_rw612.hex
+    loadfile frdm_rw612-ethernet.hex
     reset
     exit
+    ```
+
+    If using WiFi:
+    ```
+    loadfile frdm_rw612-wifi.hex
+    reset
+    exit
+    ```
+
+3. (WiFi Only) Store WiFi AP credentials
+
+    a. Open a serial connection to the rw612
+
+    b. Store your credentials
+    ```
+    settings set wifi/ssid <your-wifi-ssid>
+    settings set wifi/psk <your-wifi-password>
     ```
 
 </details>
