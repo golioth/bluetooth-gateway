@@ -93,3 +93,16 @@ jobs:
             --pytest-args="--api-url=${{ inputs.api_url }}"                       \
             --pytest-args="--api-key=${{ secrets[inputs.api_key_id] }}"           \
             -x SB_CONFIG_GOLIOTH_COAP_HOST_URI=\"${{ inputs.coap_gateway_url }}\"
+
+      - name: Safe upload twister artifacts
+        if: success() || failure()
+        uses: ./modules/lib/golioth-firmware-sdk/.github/actions/safe-upload-artifacts
+        with:
+          secrets-json: ${{ toJson(secrets) }}
+          name: twister-run-artifacts-bsim
+          path: |
+            reports/*
+            twister-out/**/*.log
+            twister-out/**/report.xml
+            twister-out/*.xml
+            twister-out/*.json
