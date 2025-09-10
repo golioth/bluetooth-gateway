@@ -4,6 +4,7 @@
 set(SUPPORTED_EMU_PLATFORMS native)
 
 board_set_flasher_ifnset(bsim_device)
+board_set_debugger_ifnset(bsim_device)
 board_finalize_runner_args(bsim_device)
 
 # Get BabbleSim binary name based on last segment in board qualifiers.

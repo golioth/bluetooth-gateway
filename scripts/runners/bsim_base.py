@@ -5,6 +5,7 @@
 flashing (running) a BabbleSim application."""
 
 import argparse
+from contextlib import contextmanager
 from functools import cached_property
 from pathlib import Path
 import random
@@ -13,6 +14,8 @@ import string
 from runners.core import RunnerCaps, RunnerConfig, ZephyrBinaryRunner
 
 from domains import Domains, Domain
+
+DEFAULT_GDB_PORT = 3333
 
 class BsimBinaryRunnerBase(ZephyrBinaryRunner):
     """Runs the BabbleSim binary."""
@@ -24,8 +27,17 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
                  bsim_dev=None,
                  bsim_sim_length=None,
                  bsim_args=None,
-                 bsim_cmds=None):
+                 bsim_cmds=None,
+                 tui=False,
+                 gdb_port=DEFAULT_GDB_PORT):
         super().__init__(cfg)
+
+        self.gdb_port = gdb_port
+
+        if cfg.gdb is None:
+            self.gdb_cmd = None
+        else:
+            self.gdb_cmd = [cfg.gdb] + (['-tui'] if tui else [])
 
         if self.cfg.exe_file is None:
             raise ValueError("The provided RunnerConfig is missing the required field 'exe_file'.")
@@ -40,7 +52,7 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
 
     @classmethod
     def capabilities(cls):
-        return RunnerCaps(commands={'flash'})
+        return RunnerCaps(commands={'debug', 'flash'})
 
     @classmethod
     def do_add_parser(cls, parser: argparse.ArgumentParser):
@@ -58,6 +70,10 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         parser.add_argument('--foreground-domain',
                             help='''Domain name of the program to run/debug
                             in the foreground''')
+        parser.add_argument('--tui', default=False, action='store_true',
+                            help='if given, GDB uses -tui')
+        parser.add_argument('--gdb-port', default=DEFAULT_GDB_PORT,
+                            help=f'gdb port, defaults to {DEFAULT_GDB_PORT}')
 
     @classmethod
     def args_from_previous_runner(cls, previous_runner, args):
@@ -77,7 +93,9 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
                    bsim_dev=args.bsim_dev,
                    bsim_sim_length=args.bsim_sim_length,
                    bsim_args=args.bsim_arg,
-                   bsim_cmds=getattr(args, 'bsim_cmds', None))
+                   bsim_cmds=getattr(args, 'bsim_cmds', None),
+                   tui=args.tui,
+                   gdb_port=args.gdb_port)
 
     def do_run(self, command: str, **kwargs):
         if not self.bsim_id:
@@ -87,6 +105,8 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
 
         if command == 'flash':
             self.do_flash(**kwargs)
+        elif command == 'debug':
+            self.do_debug(**kwargs)
         else:
             raise AssertionError
 
@@ -137,6 +157,24 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         return self.domains.get_default_domain().build_dir \
             == self.build_conf.build_dir
 
+    @contextmanager
+    def run_background_domains(self):
+        # This is the last domain, so start all launch all processes now.
+        procs = []
+
+        for name, (args, kwargs) in self.bsim_cmds.items():
+            # Run all background domains
+            if self.foreground_domain != name:
+                procs.append(self.popen_ignore_int(args, **kwargs))
+        try:
+            yield procs
+        finally:
+            # Terminate all previous domain processes
+            for proc in procs:
+                proc.terminate()
+            for proc in procs:
+                proc.wait()
+
     def do_flash(self, **kwargs):
         if not self.sysbuild_conf.options:
             cmd = [self.cfg.exe_file]
@@ -149,19 +187,24 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
 
         # This is the last domain, so launch all processes now.
 
-        procs = []
-
-        for name, (args, kwargs) in self.bsim_cmds.items():
-            # Run all background domains
-            if self.foreground_domain != name:
-                procs.append(self.popen_ignore_int(args, **kwargs))
-        try:
+        with self.run_background_domains():
             # Run foreground domain
             args, kwargs = self.bsim_cmds[self.foreground_domain]
             self.check_call(args, **kwargs)
-        finally:
-            # Terminate all background domain processes
-            for proc in procs:
-                proc.terminate()
-            for proc in procs:
-                proc.wait()
+
+    def do_debug(self, **kwargs):
+        if not self.sysbuild_conf.options:
+            cmd = (self.gdb_cmd + ['--quiet', self.cfg.exe_file])
+            self.check_call(cmd)
+            return
+
+        if self.domain.name != self.domains_selected[-1]:
+            # Just run for the last domain
+            return
+
+        # This is the last domain, so start all launch all processes now.
+
+        with self.run_background_domains():
+            # Run foreground domain
+            args, kwargs = self.bsim_cmds[self.foreground_domain]
+            self.check_call(self.gdb_cmd + ['--quiet', '--args'] + args, **kwargs)
