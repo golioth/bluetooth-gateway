@@ -18,6 +18,8 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
     """Runs the BabbleSim binary."""
 
     def __init__(self, cfg,
+                 domains_selected=None,
+                 foreground_domain=None,
                  bsim_id=None,
                  bsim_dev=None,
                  bsim_sim_length=None,
@@ -28,11 +30,13 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         if self.cfg.exe_file is None:
             raise ValueError("The provided RunnerConfig is missing the required field 'exe_file'.")
 
+        self._domains_selected = domains_selected
+        self._foreground_domain = foreground_domain
         self.bsim_id = bsim_id
         self.bsim_dev = bsim_dev
         self.bsim_sim_length = bsim_sim_length
         self.bsim_args = bsim_args or []
-        self.bsim_cmds = bsim_cmds or []
+        self.bsim_cmds = bsim_cmds or {}
 
     @classmethod
     def capabilities(cls):
@@ -51,6 +55,9 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         parser.add_argument('--bsim-sim-length',
                             help='''Length of the simulation, in us (only
                             applies to 2G4_phy)''')
+        parser.add_argument('--foreground-domain',
+                            help='''Domain name of the program to run/debug
+                            in the foreground''')
 
     @classmethod
     def args_from_previous_runner(cls, previous_runner, args):
@@ -58,12 +65,14 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
             args.bsim_id = previous_runner.bsim_id
 
         if not hasattr(args, 'bsim_cmds'):
-            args.bsim_cmds = []
-        args.bsim_cmds += previous_runner.bsim_cmds
+            args.bsim_cmds = {}
+        args.bsim_cmds.update(previous_runner.bsim_cmds)
 
     @classmethod
     def do_create(cls, cfg: RunnerConfig, args: argparse.Namespace) -> ZephyrBinaryRunner:
         return cls(cfg,
+                   domains_selected=args.domain,
+                   foreground_domain=args.foreground_domain,
                    bsim_id=args.bsim_id,
                    bsim_dev=args.bsim_dev,
                    bsim_sim_length=args.bsim_sim_length,
@@ -73,6 +82,8 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
     def do_run(self, command: str, **kwargs):
         if not self.bsim_id:
             self.bsim_id = ''.join(random.choice(string.ascii_letters) for _ in range(16))
+
+        self.bsim_cmds[self.domain.name] = self.exec_cmd()
 
         if command == 'flash':
             self.do_flash(**kwargs)
@@ -101,6 +112,27 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
 
         return domains_from_file.get_domains(default_flash_order=True)
 
+    @cached_property
+    def domains_selected(self) -> list[str]:
+        domains_selected = self._domains_selected
+        if not domains_selected:
+            domains_selected = [d.name for d in self.domains_all]
+
+        return domains_selected
+
+    @cached_property
+    def domain(self) -> Domain:
+        return [d for d in self.domains_all
+                if d.build_dir == self.build_conf.build_dir][0]
+
+    @cached_property
+    def foreground_domain(self) -> str:
+        foreground_domain = self._foreground_domain
+        if not foreground_domain:
+            foreground_domain = self.domains_selected[-1]
+
+        return foreground_domain
+
     def is_default_domain(self) -> bool:
         return self.domains.get_default_domain().build_dir \
             == self.build_conf.build_dir
@@ -111,23 +143,24 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
             self.check_call(cmd)
             return
 
-        if self.domains_all[-1].build_dir != self.build_conf.build_dir:
-            self.bsim_cmds.append(self.exec_cmd())
+        if self.domain.name != self.domains_selected[-1]:
+            # Just run for the last domain
             return
 
-        # This is the last domain, so start all launch all processes now.
+        # This is the last domain, so launch all processes now.
+
         procs = []
 
-        for args, kwargs in self.bsim_cmds:
-            # Run all previous domains in the background
-
-            procs.append(self.popen_ignore_int(args, **kwargs))
+        for name, (args, kwargs) in self.bsim_cmds.items():
+            # Run all background domains
+            if self.foreground_domain != name:
+                procs.append(self.popen_ignore_int(args, **kwargs))
         try:
-            # Run default (last) domain in the foreground
-            args, kwargs = self.exec_cmd()
+            # Run foreground domain
+            args, kwargs = self.bsim_cmds[self.foreground_domain]
             self.check_call(args, **kwargs)
         finally:
-            # Terminate all previous domain processes
+            # Terminate all background domain processes
             for proc in procs:
                 proc.terminate()
             for proc in procs:
