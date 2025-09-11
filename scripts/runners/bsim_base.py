@@ -12,7 +12,7 @@ import string
 
 from runners.core import RunnerCaps, RunnerConfig, ZephyrBinaryRunner
 
-from domains import Domains
+from domains import Domains, Domain
 
 class BsimBinaryRunnerBase(ZephyrBinaryRunner):
     """Runs the BabbleSim binary."""
@@ -94,10 +94,12 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         }
 
     @cached_property
-    def domains(self) -> Domains:
+    def domains_all(self) -> list[Domain]:
         domains_file = Path(self.sysbuild_conf.build_dir) / 'domains.yaml'
 
-        return Domains.from_file(domains_file)
+        domains_from_file = Domains.from_file(domains_file)
+
+        return domains_from_file.get_domains(default_flash_order=True)
 
     def is_default_domain(self) -> bool:
         return self.domains.get_default_domain().build_dir \
@@ -109,9 +111,7 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
             self.check_call(cmd)
             return
 
-        domains = self.domains.get_domains(default_flash_order=True)
-
-        if domains[-1].build_dir != self.build_conf.build_dir:
+        if self.domains_all[-1].build_dir != self.build_conf.build_dir:
             self.bsim_cmds.append(self.exec_cmd())
             return
 

@@ -37,7 +37,7 @@ class BsimPhyBinaryRunner(BsimBinaryRunnerBase):
             ]
 
         bsim_cmd += [
-            f'-D={len(self.domains.get_domains()) - 1}',
+            f'-D={len(self.domains_all) - 1}',
         ]
 
         # Requires running from inside tools/bsim/bin directory in order to
