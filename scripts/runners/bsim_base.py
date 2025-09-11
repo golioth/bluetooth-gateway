@@ -29,10 +29,12 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
                  bsim_args=None,
                  bsim_cmds=None,
                  tui=False,
-                 gdb_port=DEFAULT_GDB_PORT):
+                 gdb_port=DEFAULT_GDB_PORT,
+                 gdb_args=None):
         super().__init__(cfg)
 
         self.gdb_port = gdb_port
+        self.gdb_args = gdb_args or []
 
         if cfg.gdb is None:
             self.gdb_cmd = None
@@ -74,6 +76,8 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
                             help='if given, GDB uses -tui')
         parser.add_argument('--gdb-port', default=DEFAULT_GDB_PORT,
                             help=f'gdb port, defaults to {DEFAULT_GDB_PORT}')
+        parser.add_argument('--gdb-args', action="append",
+                            help='pass additional arguments to GDB')
 
     @classmethod
     def args_from_previous_runner(cls, previous_runner, args):
@@ -95,7 +99,8 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
                    bsim_args=args.bsim_arg,
                    bsim_cmds=getattr(args, 'bsim_cmds', None),
                    tui=args.tui,
-                   gdb_port=args.gdb_port)
+                   gdb_port=args.gdb_port,
+                   gdb_args=args.gdb_args)
 
     def do_run(self, command: str, **kwargs):
         if not self.bsim_id:
@@ -194,7 +199,7 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
 
     def do_debug(self, **kwargs):
         if not self.sysbuild_conf.options:
-            cmd = (self.gdb_cmd + ['--quiet', self.cfg.exe_file])
+            cmd = (self.gdb_cmd + self.gdb_args + ['--quiet', self.cfg.exe_file])
             self.check_call(cmd)
             return
 
@@ -207,4 +212,4 @@ class BsimBinaryRunnerBase(ZephyrBinaryRunner):
         with self.run_background_domains():
             # Run foreground domain
             args, kwargs = self.bsim_cmds[self.foreground_domain]
-            self.check_call(self.gdb_cmd + ['--quiet', '--args'] + args, **kwargs)
+            self.check_call(self.gdb_cmd + self.gdb_args + ['--quiet', '--args'] + args, **kwargs)
