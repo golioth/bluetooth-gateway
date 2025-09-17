@@ -9,12 +9,6 @@ from .bsim_base import BsimBinaryRunnerBase
 class BsimZephyrBinaryRunner(BsimBinaryRunnerBase):
     """Runs the BabbleSim Zephyr application."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if self.cfg.gdb is None:
-            raise ValueError("The provided RunnerConfig is missing the required field 'gdb'.")
-
     @classmethod
     def name(cls):
         return 'bsim_zephyr'
