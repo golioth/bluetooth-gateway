@@ -24,7 +24,10 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(connect);
 
-static const struct bt_uuid_128 golioth_svc_uuid = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL);
+static const struct bt_uuid_128 golioth_svc_uuid_128 =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL_128);
+static const struct bt_uuid_16 golioth_svc_uuid_16 =
+    BT_UUID_INIT_16(GOLIOTH_BLE_GATT_UUID_SVC_VAL_16);
 static const struct bt_uuid_128 char_uuids[GOLIOTH_GATT_ATTRS] = {
     [GOLIOTH_GATT_ATTR_INFO] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_INFO_CHRC_VAL),
     [GOLIOTH_GATT_ATTR_DOWNLINK] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DOWNLINK_CHRC_VAL),
@@ -89,14 +92,30 @@ static uint8_t discover_services(struct bt_conn *conn,
 {
     if (!attr)
     {
-        LOG_ERR("Missing pouch service");
-        (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        if (params->uuid == &golioth_svc_uuid_16.uuid)
+        {
+            LOG_DBG("Could not find 16-bit UUID, beginning search for 128-bit");
+            params->uuid = &golioth_svc_uuid_128.uuid;
+
+            int err = bt_gatt_discover(conn, params);
+            if (err)
+            {
+                LOG_ERR("Failed to start discovery: %d", err);
+                (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            }
+        }
+        else
+        {
+            LOG_ERR("Missing pouch service");
+            (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        }
         return BT_GATT_ITER_STOP;
     }
 
     struct bt_gatt_service_val *svc = attr->user_data;
 
-    if (0 == bt_uuid_cmp(&golioth_svc_uuid.uuid, svc->uuid))
+    if (0 == bt_uuid_cmp(&golioth_svc_uuid_16.uuid, svc->uuid)
+        || 0 == bt_uuid_cmp(&golioth_svc_uuid_128.uuid, svc->uuid))
     {
         params->func = discover_characteristics;
         params->type = BT_GATT_DISCOVER_CHARACTERISTIC;
@@ -144,7 +163,7 @@ static void bt_connected(struct bt_conn *conn, uint8_t err)
     discover_params->type = BT_GATT_DISCOVER_PRIMARY;
     discover_params->start_handle = BT_ATT_FIRST_ATTRIBUTE_HANDLE;
     discover_params->end_handle = BT_ATT_LAST_ATTRIBUTE_HANDLE;
-    discover_params->uuid = &golioth_svc_uuid.uuid;
+    discover_params->uuid = &golioth_svc_uuid_16.uuid;
 
     err = bt_gatt_discover(conn, discover_params);
     if (err)
