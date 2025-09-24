@@ -35,7 +35,10 @@ struct tf_data
     struct golioth_ble_gatt_adv_data adv_data;
 };
 
-static const struct bt_uuid_128 golioth_svc_uuid = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL);
+static const struct bt_uuid_128 golioth_svc_uuid_128 =
+    BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SVC_VAL_128);
+static const struct bt_uuid_16 golioth_svc_uuid_16 =
+    BT_UUID_INIT_16(GOLIOTH_BLE_GATT_UUID_SVC_VAL_16);
 
 static bool data_cb(struct bt_data *data, void *user_data)
 {
@@ -45,12 +48,13 @@ static bool data_cb(struct bt_data *data, void *user_data)
     {
         case BT_DATA_SVC_DATA128:
         {
-            struct golioth_ble_gatt_adv_data *adv_data;
+            const struct golioth_ble_gatt_adv_data *adv_data;
 
-            if (data->data_len >= sizeof(golioth_svc_uuid.val) + sizeof(*adv_data)
-                && memcmp(golioth_svc_uuid.val, data->data, sizeof(golioth_svc_uuid.val)) == 0)
+            if (data->data_len >= sizeof(golioth_svc_uuid_128.val) + sizeof(*adv_data)
+                && memcmp(golioth_svc_uuid_128.val, data->data, sizeof(golioth_svc_uuid_128.val))
+                    == 0)
             {
-                adv_data = (void *) &data->data[sizeof(golioth_svc_uuid.val)];
+                adv_data = (const void *) &data->data[sizeof(golioth_svc_uuid_128.val)];
 
                 tf->is_tf = true;
                 tf->adv_data = *adv_data;
@@ -59,6 +63,25 @@ static bool data_cb(struct bt_data *data, void *user_data)
             }
             return true;
         }
+
+        case BT_DATA_SVC_DATA16:
+        {
+            const struct golioth_ble_gatt_adv_data *adv_data;
+
+            if (data->data_len >= sizeof(golioth_svc_uuid_16.val) + sizeof(*adv_data)
+                && memcmp(&golioth_svc_uuid_16.val, data->data, sizeof(golioth_svc_uuid_16.val))
+                    == 0)
+            {
+                adv_data = (const void *) &data->data[sizeof(golioth_svc_uuid_16.val)];
+
+                tf->is_tf = true;
+                tf->adv_data = *adv_data;
+
+                return false;
+            }
+            return true;
+        }
+
         default:
             return true;
     }
