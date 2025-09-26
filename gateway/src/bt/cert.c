@@ -188,7 +188,7 @@ static int write_server_cert_characteristic(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
     struct bt_gatt_write_params *params = &node->write_params;
-    uint16_t server_cert_handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT];
+    uint16_t server_cert_handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value;
     size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
         golioth_ble_gatt_packetizer_get(node->packetizer, node->server_cert_scratch, &len);
@@ -280,7 +280,7 @@ static void gateway_server_cert_write_start(struct bt_conn *conn)
 {
     struct golioth_node_info *node = get_node_info(conn);
 
-    if (0 == node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT])
+    if (0 == node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value)
     {
         LOG_ERR("%s characteristic undiscovered", "server cert");
         server_cert_cleanup(conn);
@@ -313,7 +313,7 @@ static void gateway_server_cert_serial_read_start(struct bt_conn *conn)
 
     read_params->func = server_cert_read_cb;
     read_params->handle_count = 1;
-    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT];
+    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value;
     int err = bt_gatt_read(conn, read_params);
     if (err)
     {
@@ -334,7 +334,7 @@ static void gateway_device_cert_read_start(struct bt_conn *conn)
 
     read_params->func = device_cert_read_cb;
     read_params->handle_count = 1;
-    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT];
+    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT].value;
     int err = bt_gatt_read(conn, read_params);
     if (err)
     {

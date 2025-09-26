@@ -22,13 +22,20 @@ enum golioth_gatt_attr
     GOLIOTH_GATT_ATTRS,
 };
 
+struct attr_handle
+{
+    uint16_t value;
+    uint16_t ccc;
+};
+
 struct golioth_node_info
 {
-    uint16_t attr_handles[GOLIOTH_GATT_ATTRS];
+    struct attr_handle attr_handles[GOLIOTH_GATT_ATTRS];
     union
     {
         struct bt_gatt_discover_params discover_params;
         struct bt_gatt_read_params read_params;
+        struct bt_gatt_subscribe_params subscribe_params;
         struct bt_gatt_write_params write_params;
     };
     struct downlink_context *downlink_ctx;
