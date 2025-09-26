@@ -35,11 +35,63 @@ static const struct bt_uuid_128 char_uuids[GOLIOTH_GATT_ATTRS] = {
     [GOLIOTH_GATT_ATTR_SERVER_CERT] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_SERVER_CERT_CHRC_VAL),
     [GOLIOTH_GATT_ATTR_DEVICE_CERT] = BT_UUID_INIT_128(GOLIOTH_BLE_GATT_UUID_DEVICE_CERT_CHRC_VAL),
 };
+static const struct bt_uuid_16 gatt_ccc_uuid = BT_UUID_INIT_16(BT_UUID_GATT_CCC_VAL);
 
 BUILD_ASSERT(ARRAY_SIZE(char_uuids) == GOLIOTH_GATT_ATTRS,
              "Missing characteristic UUID definitions");
 
 static struct golioth_node_info connected_nodes[CONFIG_BT_MAX_CONN];
+
+static uint8_t discover_descriptors(struct bt_conn *conn,
+                                    const struct bt_gatt_attr *attr,
+                                    struct bt_gatt_discover_params *params)
+{
+    struct golioth_node_info *node = get_node_info(conn);
+
+    if (attr)
+    {
+        int attr_idx = GOLIOTH_GATT_ATTRS;
+        /* Find the value handle closest to but lower than this handle */
+        for (int i = 0; i < GOLIOTH_GATT_ATTRS; i++)
+        {
+            if (node->attr_handles[i].value < attr->handle)
+            {
+                if (attr_idx == GOLIOTH_GATT_ATTRS)
+                {
+                    attr_idx = i;
+                }
+                else if (node->attr_handles[i].value > node->attr_handles[attr_idx].value)
+                {
+                    attr_idx = i;
+                }
+            }
+        }
+
+        if (attr_idx != GOLIOTH_GATT_ATTRS)
+        {
+            node->attr_handles[attr_idx].ccc = attr->handle;
+            LOG_DBG("Found CCC descriptor handle %d for value handle %d",
+                    node->attr_handles[attr_idx].ccc,
+                    node->attr_handles[attr_idx].value);
+        }
+
+        return BT_GATT_ITER_CONTINUE;
+    }
+
+    if (node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value
+        && node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT].value)
+    {
+        gateway_cert_exchange_start(conn);
+    }
+    else
+    {
+        LOG_WRN("Could not discover %s characteristics", "certificate");
+        LOG_INF("Starting uplink without cert exchange");
+        gateway_uplink_start(conn);
+    }
+
+    return BT_GATT_ITER_STOP;
+}
 
 static uint8_t discover_characteristics(struct bt_conn *conn,
                                         const struct bt_gatt_attr *attr,
@@ -54,7 +106,7 @@ static uint8_t discover_characteristics(struct bt_conn *conn,
         {
             if (0 == bt_uuid_cmp(chrc->uuid, &char_uuids[i].uuid))
             {
-                node->attr_handles[i] = chrc->value_handle;
+                node->attr_handles[i].value = chrc->value_handle;
                 return BT_GATT_ITER_CONTINUE;
             }
         }
@@ -63,24 +115,34 @@ static uint8_t discover_characteristics(struct bt_conn *conn,
         return BT_GATT_ITER_CONTINUE;
     }
 
-    if (!node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK]
-        || !node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK])
+    if (!node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].value
+        || !node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK].value)
     {
         LOG_ERR("Could not discover %s characteristics", "pouch");
         (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         return BT_GATT_ITER_STOP;
     }
 
-    if (node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT]
-        && node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT])
+    params->start_handle = params->end_handle;
+    for (int i = 0; i < GOLIOTH_GATT_ATTRS; i++)
     {
-        gateway_cert_exchange_start(conn);
+        if (node->attr_handles[i].value < params->start_handle)
+        {
+            params->start_handle = node->attr_handles[i].value;
+        }
     }
-    else
+
+    /* Descriptors start after the value handle (i.e. 2 after the characteristic handle) */
+    params->start_handle += 2;
+    params->func = discover_descriptors;
+    params->type = BT_GATT_DISCOVER_DESCRIPTOR;
+    params->uuid = &gatt_ccc_uuid.uuid;
+
+    int err = bt_gatt_discover(conn, params);
+    if (err)
     {
-        LOG_WRN("Could not discover %s characteristics", "certificate");
-        LOG_INF("Starting uplink without cert exchange");
-        gateway_uplink_start(conn);
+        LOG_ERR("Error discovering descriptors: %d", err);
+        (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
     }
 
     return BT_GATT_ITER_STOP;

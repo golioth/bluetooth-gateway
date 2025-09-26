@@ -98,7 +98,7 @@ void gateway_uplink_start(struct bt_conn *conn)
 
     read_params->func = tf_uplink_read_cb;
     read_params->handle_count = 1;
-    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK];
+    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].value;
     int err = bt_gatt_read(conn, read_params);
     if (err)
     {
