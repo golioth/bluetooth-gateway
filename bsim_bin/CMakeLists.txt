@@ -14,7 +14,7 @@ find_package(Zephyr REQUIRED
     zephyr_module
     boards
     hwm_v2
-    soc_v2
+    soc
 )
 project(bsim_bin LANGUAGES)
 
@@ -27,3 +27,13 @@ foreach(dir ${BOARD_DIRECTORIES})
 endforeach()
 
 add_subdirectory(${ZEPHYR_BASE}/cmake/flash flash)
+
+set(gen_dts_edt ${ZEPHYR_BASE}/scripts/dts/gen_edt.py)
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} ${gen_dts_edt}
+    --dts ${CMAKE_CURRENT_SOURCE_DIR}/empty.dts
+    --dtc-flags ""
+    --bindings-dirs ${CMAKE_CURRENT_SOURCE_DIR}
+    --dts-out ${CMAKE_CURRENT_BINARY_DIR}/zephyr/zephyr.dts
+    --edt-pickle-out ${CMAKE_CURRENT_BINARY_DIR}/zephyr/edt.pickle
+)

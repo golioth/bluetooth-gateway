@@ -1,6 +1,6 @@
 patches:
   - path: zephyr/zephyr/0001-drivers-net-nsos-support-nrf_bsim.patch
-    sha256sum: a3238fc52d954c6b133807d19e5f6d7c280aec43bea2260f6a99426ce9be3d00
+    sha256sum: 25ce052740bb44d2d575a7f3187817cf1f22aa41c6328982f0f1b3c4f8ad7593
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev
@@ -8,95 +8,39 @@ patches:
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
   - path: zephyr/zephyr/0002-boards-nrf_bsim-define-NSOS_IRQ-for-offloaded-socket.patch
-    sha256sum: 91b8c959d6b784878ea6b86a59ce034212f5829887990b08d522d0e728942069
+    sha256sum: 13916913dc7f11cd4d5d3ef875da739818e90fac8847f2ce244f3f6705c03149
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev
     date: 2025-01-14
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0003-native_simulator-Get-latest-from-upstream.patch
-    sha256sum: 35a68f88aeaf5243e43265ab9e030f5638c5e1a1f9d7991ee81019930a36823b
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-18
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0004-native_simulator-Get-latest-from-upstream.patch
-    sha256sum: 202abed48a60c80abc9b6be6688fbf93d519c8ee14675a60551e248040e39fe4
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-24
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0005-native-posix-arch-Add-option-to-enable-building-of-n.patch
-    sha256sum: 8fcbec6fecf97778aa0571b347b2e488182057975823d5ae4743739c542e5554
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-24
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0006-native_simulator-Get-latest-from-upstream.patch
-    sha256sum: e366d91d21a89db3e0021b81e5852b7b13ba2e61c3db5a0451d254b65867f754
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-26
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0007-Bluetooth-userchan-Support-other-libCs.patch
-    sha256sum: ce7c0f0c92a4d5e6ff77c1cb83c6351b083e36c2b15c524362fa7053769b985a
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-26
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0008-board-native_sim-BT-userchan-now-supports-picolibc.patch
-    sha256sum: 4b3afebc6a97cbb1908f3672168f5ed659285add32db831f2f1c6e92c316c3ee
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-26
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0009-drivers-nsos-Use-native-simulator-errno-conversion.patch
-    sha256sum: a4bd24f61846f0c4b9848e1a6cb0233720d867c47ffb1abdc99c9eaf262dd11b
-    module: zephyr
-    author: Alberto Escolar Piedras
-    email: alberto.escolar.piedras@nordicsemi.no
-    date: 2025-02-24
-    apply-command: >-
-      bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0010-nsi-move-nsos_fcntl-to-more-generic-nsi_fcntl.patch
-    sha256sum: 01a73074a3e673ee5618a10edb366f6bead53ff06b552fecd86c9e8323884fdc
+  - path: zephyr/zephyr/0003-nsi-move-nsos_fcntl-to-more-generic-nsi_fcntl.patch
+    sha256sum: 0830899d226a3b7cd1f7b002b8cd746857a41f2a19ee899bfc5cf15773f296c5
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev
     date: 2025-08-05
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0011-nsi-fcntl-add-O_CREAT-and-O_TRUNC.patch
-    sha256sum: e1d77d84f84fb7904559b083270875c73e2d38f6567503eb5a7ca580c5397682
+  - path: zephyr/zephyr/0004-nsi-fcntl-add-O_CREAT-and-O_TRUNC.patch
+    sha256sum: dd53fd69065fa432a38a53176778a529ec7cf89b5823c42fd7fa1fcedfb1fd23
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev
     date: 2025-08-14
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0012-subsys-fs-nsim_mount-new-FS-for-mounting-host-filesy.patch
-    sha256sum: ddad24efe17347947fe86d0e5b000e343c907b2e8dcfe526a0d36c7d0d99983e
+  - path: zephyr/zephyr/0005-subsys-fs-nsim_mount-new-FS-for-mounting-host-filesy.patch
+    sha256sum: 7380f056216807ca15d220233e38b3b407c0b1fb825e5b4794ae6c926b13e4f0
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev
     date: 2025-08-14
     apply-command: >-
       bash -c 'if [ $(west config manifest.file) = "west-zephyr.yml" ]; then git am $@; fi' --
-  - path: zephyr/zephyr/0013-tests-fs-nsim_mount-add-basic-tests-for-implemented-.patch
-    sha256sum: 17d5c28831de1b2218aea89cb343f0e36822cc2419f5b60b94d6f57a428b67e7
+  - path: zephyr/zephyr/0006-tests-fs-nsim_mount-add-basic-tests-for-implemented-.patch
+    sha256sum: 5117af152443b7d703e7c8b0fafa76a1d3cf34e5077b1587fbe09583129bbaad
     module: zephyr
     author: Marcin Niestroj
     email: m.niestroj@emb.dev

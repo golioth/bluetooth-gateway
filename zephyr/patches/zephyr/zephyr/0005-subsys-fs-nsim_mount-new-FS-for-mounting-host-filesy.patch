@@ -1,4 +1,4 @@
-From 2c40369f142a2247df892a3f112e779025d16265 Mon Sep 17 00:00:00 2001
+From f37625a5066c54ba371e055c4c2aa7c19e4de7c2 Mon Sep 17 00:00:00 2001
 From: Marcin Niestroj <m.niestroj@emb.dev>
 Date: Thu, 14 Aug 2025 12:34:01 +0200
 Subject: [PATCH] subsys: fs: nsim_mount: new FS for mounting host filesystem
@@ -41,7 +41,7 @@ index e2cf7dff73b..99bace60393 100644
  	FS_TYPE_EXTERNAL_BASE,
  };
 diff --git a/subsys/fs/CMakeLists.txt b/subsys/fs/CMakeLists.txt
-index 15f97649a13..92b5654aab3 100644
+index 48df605ae01..24108d05faa 100644
 --- a/subsys/fs/CMakeLists.txt
 +++ b/subsys/fs/CMakeLists.txt
 @@ -11,6 +11,11 @@ if(CONFIG_FILE_SYSTEM_LIB_LINK)
@@ -57,10 +57,10 @@ index 15f97649a13..92b5654aab3 100644
                                              LFS_CONFIG=zephyr_lfs_config.h
      )
 diff --git a/subsys/fs/Kconfig b/subsys/fs/Kconfig
-index bf6933f13aa..8613417bae4 100644
+index 4dde4b27100..d895c50ec3c 100644
 --- a/subsys/fs/Kconfig
 +++ b/subsys/fs/Kconfig
-@@ -98,6 +98,18 @@ config FUSE_FS_ACCESS
+@@ -99,6 +99,18 @@ config FUSE_FS_ACCESS
  	help
  	  Expose file system partitions to the host system through FUSE.
  
@@ -1012,5 +1012,5 @@ index 00000000000..0ee97b3f371
 +
 +#endif /* ZEPHYR_FS_NSIM_MOUNT_BOTTOM_H */
 -- 
-2.50.1
+2.51.0
 

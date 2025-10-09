@@ -4,12 +4,12 @@ manifest:
   projects:
     - name: golioth
       path: modules/lib/golioth-firmware-sdk
-      revision: v0.20.0
+      revision: v0.21.0
       url: https://github.com/golioth/golioth-firmware-sdk.git
       import:
         file: west-ncs.yml
         name-allowlist:
-          - cmsis
+          - cmsis_6
           - hal_nordic
           - littlefs
           - mbedtls
