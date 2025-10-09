@@ -60,7 +60,7 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
         return GOLIOTH_ERR_NACK;
     }
 
-    struct block *block = block_alloc(NULL, len, K_SECONDS(CONFIG_GATEWAY_DOWNLINK_BLOCK_TIMEOUT));
+    struct block *block = block_alloc(NULL, K_SECONDS(CONFIG_GATEWAY_DOWNLINK_BLOCK_TIMEOUT));
     if (NULL == block)
     {
         LOG_ERR("Failed to allocate block");
