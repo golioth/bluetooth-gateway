@@ -1,0 +1,2 @@
+add_subdirectory_ifdef(CONFIG_POUCH_GATEWAY lib)
+zephyr_include_directories(include)

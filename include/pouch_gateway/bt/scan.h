@@ -6,4 +6,4 @@
 
 #pragma once
 
-void gateway_scan_start(void);
+void pouch_gateway_scan_start(void);

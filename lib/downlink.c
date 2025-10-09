@@ -12,8 +12,7 @@
 #include <golioth/gateway.h>
 
 #include "block.h"
-
-#include "downlink.h"
+#include <pouch_gateway/downlink.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(downlink);
@@ -26,9 +25,9 @@ enum
     DOWNLINK_FLAG_COUNT,
 };
 
-struct downlink_context
+struct pouch_gateway_downlink_context
 {
-    downlink_data_available_cb data_available_cb;
+    pouch_gateway_downlink_data_available_cb data_available_cb;
     void *cb_arg;
     struct k_fifo block_queue;
     struct block *current_block;
@@ -49,23 +48,26 @@ static void flush_block_queue(struct k_fifo *queue)
     }
 }
 
-enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_last, void *arg)
+enum golioth_status pouch_gateway_downlink_block_cb(const uint8_t *data,
+                                                    size_t len,
+                                                    bool is_last,
+                                                    void *arg)
 {
-    struct downlink_context *downlink = arg;
+    struct pouch_gateway_downlink_context *downlink = arg;
 
     if (atomic_test_bit(downlink->flags, DOWNLINK_FLAG_ABORTED))
     {
         flush_block_queue(&downlink->block_queue);
-        downlink_finish(downlink);
+        pouch_gateway_downlink_finish(downlink);
         return GOLIOTH_ERR_NACK;
     }
 
-    struct block *block = block_alloc(NULL, K_SECONDS(CONFIG_GATEWAY_DOWNLINK_BLOCK_TIMEOUT));
+    struct block *block = block_alloc(NULL, K_SECONDS(CONFIG_POUCH_GATEWAY_DOWNLINK_BLOCK_TIMEOUT));
     if (NULL == block)
     {
         LOG_ERR("Failed to allocate block");
         flush_block_queue(&downlink->block_queue);
-        downlink_finish(downlink);
+        pouch_gateway_downlink_finish(downlink);
         return GOLIOTH_ERR_MEM_ALLOC;
     }
 
@@ -86,11 +88,11 @@ enum golioth_status downlink_block_cb(const uint8_t *data, size_t len, bool is_l
     return GOLIOTH_OK;
 }
 
-void downlink_end_cb(enum golioth_status status,
-                     const struct golioth_coap_rsp_code *coap_rsp_code,
-                     void *arg)
+void pouch_gateway_downlink_end_cb(enum golioth_status status,
+                                   const struct golioth_coap_rsp_code *coap_rsp_code,
+                                   void *arg)
 {
-    struct downlink_context *downlink = arg;
+    struct pouch_gateway_downlink_context *downlink = arg;
 
     if (GOLIOTH_OK != status)
     {
@@ -100,7 +102,7 @@ void downlink_end_cb(enum golioth_status status,
             LOG_ERR("CoAP error: %d.%02d", coap_rsp_code->code_class, coap_rsp_code->code_detail);
         }
 
-        downlink_abort(downlink);
+        pouch_gateway_downlink_abort(downlink);
 
         /* If transport is waiting for a block, kick it */
 
@@ -111,11 +113,14 @@ void downlink_end_cb(enum golioth_status status,
     }
 }
 
-struct downlink_context *downlink_init(downlink_data_available_cb data_available_cb, void *cb_arg)
+struct pouch_gateway_downlink_context *pouch_gateway_downlink_init(
+    pouch_gateway_downlink_data_available_cb data_available_cb,
+    void *cb_arg)
 {
     LOG_INF("Starting downlink");
 
-    struct downlink_context *downlink = malloc(sizeof(struct downlink_context));
+    struct pouch_gateway_downlink_context *downlink =
+        malloc(sizeof(struct pouch_gateway_downlink_context));
 
     if (NULL != downlink)
     {
@@ -132,11 +137,14 @@ struct downlink_context *downlink_init(downlink_data_available_cb data_available
     return downlink;
 }
 
-int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_len, bool *is_last)
+int pouch_gateway_downlink_get_data(struct pouch_gateway_downlink_context *downlink,
+                                    void *dst,
+                                    size_t *dst_len,
+                                    bool *is_last)
 {
     *is_last = false;
 
-    if (downlink_is_complete(downlink))
+    if (pouch_gateway_downlink_is_complete(downlink))
     {
         return -ENODATA;
     }
@@ -197,12 +205,12 @@ int downlink_get_data(struct downlink_context *downlink, void *dst, size_t *dst_
     return 0;
 }
 
-bool downlink_is_complete(const struct downlink_context *downlink)
+bool pouch_gateway_downlink_is_complete(const struct pouch_gateway_downlink_context *downlink)
 {
     return atomic_test_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
 }
 
-void downlink_finish(struct downlink_context *downlink)
+void pouch_gateway_downlink_finish(struct pouch_gateway_downlink_context *downlink)
 {
     if (NULL != downlink->current_block)
     {
@@ -212,7 +220,7 @@ void downlink_finish(struct downlink_context *downlink)
     free(downlink);
 }
 
-void downlink_abort(struct downlink_context *downlink)
+void pouch_gateway_downlink_abort(struct pouch_gateway_downlink_context *downlink)
 {
     /* Downlink will be aborted after the current in flight CoAP
        block request is completed. */
@@ -221,13 +229,13 @@ void downlink_abort(struct downlink_context *downlink)
 
     /* If there are no more blocks, then just cleanup */
 
-    if (downlink_is_complete(downlink))
+    if (pouch_gateway_downlink_is_complete(downlink))
     {
-        downlink_finish(downlink);
+        pouch_gateway_downlink_finish(downlink);
     }
 }
 
-void downlink_module_init(struct golioth_client *client)
+void pouch_gateway_downlink_module_init(struct golioth_client *client)
 {
     _client = client;
 }

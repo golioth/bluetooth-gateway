@@ -6,4 +6,4 @@
 
 #pragma once
 
-void gateway_cert_exchange_start(struct bt_conn *conn);
+void pouch_gateway_cert_exchange_start(struct bt_conn *conn);

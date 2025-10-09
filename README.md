@@ -259,7 +259,7 @@ west flash
 See [Running Bluetooth Gateway with
 simulator](doc/simulator_or_usb_dongle.md).
 
-#### `CONFIG_GATEWAY_CLOUD`
+#### `CONFIG_POUCH_GATEWAY_CLOUD`
 
 It is possible to disable communication with cloud, so that only
 Bluetooth part is tested. In context of `nrf52_bsim` this allows to run
@@ -268,15 +268,15 @@ respect communication timeouts enforced in SDK. In case of cellular
 connected platforms (nRF91) there is no latency because of cellular
 network infrastructure.
 
-`CONFIG_GATEWAY_CLOUD` is available both on the gateway applicaton level
+`CONFIG_POUCH_GATEWAY_CLOUD` is available both on the gateway applicaton level
 (`bluetooth-gateway/gateway`) as well as in sysbuild (mainly for ease of
-use) as `SB_CONFIG_GATEWAY_CLOUD`.
+use) as `SB_CONFIG_POUCH_GATEWAY_CLOUD`.
 
 Running `nrf52_bsim` simulaton without cloud communication can be done
 with:
 
 ```
 west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
-  -DSB_CONFIG_GATEWAY_CLOUD=n
+  -DSB_CONFIG_POUCH_GATEWAY_CLOUD=n
 west flash
 ```
