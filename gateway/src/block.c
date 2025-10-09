@@ -13,6 +13,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/sflist.h>
 
+#include "block.h"
+
 enum block_flags
 {
     BLOCK_LAST = 0,
