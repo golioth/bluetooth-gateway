@@ -6,7 +6,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "cert.h"
+
+#include <pouch_gateway/cert.h>
 
 #include <golioth/gateway.h>
 #include <golioth/golioth_status.h>
@@ -18,34 +19,37 @@ LOG_MODULE_REGISTER(cert);
 
 static struct golioth_client *_client;
 
-static uint8_t server_crt_buf[CONFIG_GATEWAY_SERVER_CERT_MAX_LEN];
+static uint8_t server_crt_buf[CONFIG_POUCH_GATEWAY_SERVER_CERT_MAX_LEN];
 static atomic_t server_crt_len;
 static atomic_t server_crt_id;
 
-struct device_cert_context
+struct pouch_gateway_device_cert_context
 {
     size_t len;
-    uint8_t buf[CONFIG_GATEWAY_DEVICE_CERT_MAX_LEN];
+    uint8_t buf[CONFIG_POUCH_GATEWAY_DEVICE_CERT_MAX_LEN];
 };
 
-struct server_cert_context
+struct pouch_gateway_server_cert_context
 {
     size_t id;
     size_t offset;
 };
 
-struct device_cert_context *device_cert_start(void)
+struct pouch_gateway_device_cert_context *pouch_gateway_device_cert_start(void)
 {
-    struct device_cert_context *context = malloc(sizeof(struct device_cert_context));
+    struct pouch_gateway_device_cert_context *context =
+        malloc(sizeof(struct pouch_gateway_device_cert_context));
 
     context->len = 0;
 
     return context;
 }
 
-int device_cert_push(struct device_cert_context *context, const void *data, size_t len)
+int pouch_gateway_device_cert_push(struct pouch_gateway_device_cert_context *context,
+                                   const void *data,
+                                   size_t len)
 {
-    if (context->len + len > CONFIG_GATEWAY_DEVICE_CERT_MAX_LEN)
+    if (context->len + len > CONFIG_POUCH_GATEWAY_DEVICE_CERT_MAX_LEN)
     {
         return -ENOSPC;
     }
@@ -56,12 +60,12 @@ int device_cert_push(struct device_cert_context *context, const void *data, size
     return 0;
 }
 
-void device_cert_abort(struct device_cert_context *context)
+void pouch_gateway_device_cert_abort(struct pouch_gateway_device_cert_context *context)
 {
     free(context);
 }
 
-int device_cert_finish(struct device_cert_context *context)
+int pouch_gateway_device_cert_finish(struct pouch_gateway_device_cert_context *context)
 {
     enum golioth_status status;
 
@@ -72,14 +76,15 @@ int device_cert_finish(struct device_cert_context *context)
         return -EIO;
     }
 
-    device_cert_abort(context);
+    pouch_gateway_device_cert_abort(context);
 
     return 0;
 }
 
-struct server_cert_context *server_cert_start(void)
+struct pouch_gateway_server_cert_context *pouch_gateway_server_cert_start(void)
 {
-    struct server_cert_context *context = malloc(sizeof(struct server_cert_context));
+    struct pouch_gateway_server_cert_context *context =
+        malloc(sizeof(struct pouch_gateway_server_cert_context));
 
     context->id = atomic_get(&server_crt_id);
     context->offset = 0;
@@ -87,7 +92,7 @@ struct server_cert_context *server_cert_start(void)
     return context;
 }
 
-bool server_cert_is_newest(const struct server_cert_context *context)
+bool pouch_gateway_server_cert_is_newest(const struct pouch_gateway_server_cert_context *context)
 {
     return context->id == atomic_get(&server_crt_id);
 }
@@ -98,15 +103,15 @@ static void server_crt_update(size_t len)
     atomic_inc(&server_crt_id);
 }
 
-bool server_cert_is_complete(const struct server_cert_context *context)
+bool pouch_gateway_server_cert_is_complete(const struct pouch_gateway_server_cert_context *context)
 {
     return context->offset >= atomic_get(&server_crt_len);
 }
 
-int server_cert_get_data(struct server_cert_context *context,
-                         void *dst,
-                         size_t *dst_len,
-                         bool *is_last)
+int pouch_gateway_server_cert_get_data(struct pouch_gateway_server_cert_context *context,
+                                       void *dst,
+                                       size_t *dst_len,
+                                       bool *is_last)
 {
     size_t len = atomic_get(&server_crt_len);
 
@@ -133,18 +138,18 @@ int server_cert_get_data(struct server_cert_context *context,
     return 0;
 }
 
-void server_cert_abort(struct server_cert_context *context)
+void pouch_gateway_server_cert_abort(struct pouch_gateway_server_cert_context *context)
 {
     free(context);
 }
 
-void cert_module_on_connected(struct golioth_client *client)
+void pouch_gateway_cert_module_on_connected(struct golioth_client *client)
 {
     enum golioth_status status;
 
     _client = client;
 
-    if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    if (IS_ENABLED(CONFIG_POUCH_GATEWAY_CLOUD))
     {
         size_t len = sizeof(server_crt_buf);
         status = golioth_gateway_server_cert_get(client, server_crt_buf, &len);
@@ -156,10 +161,10 @@ void cert_module_on_connected(struct golioth_client *client)
 
         server_crt_update(len);
     }
-    else if (IS_ENABLED(CONFIG_GATEWAY_SERVER_CERT_BUILTIN))
+    else if (IS_ENABLED(CONFIG_POUCH_GATEWAY_SERVER_CERT_BUILTIN))
     {
         static const uint8_t server_crt_offline[] = {
-#include "server.der.inc"
+#include "bluetooth_gateway_server.der.inc"
         };
 
         memcpy(server_crt_buf, server_crt_offline, sizeof(server_crt_offline));

@@ -51,7 +51,7 @@ jobs:
             target: native_sim
             app: gateway
             sysbuild: false
-            extra_args: -DCONFIG_GATEWAY_CLOUD=n
+            extra_args: -DCONFIG_POUCH_GATEWAY_CLOUD=n
           - manifest: west-zephyr.yml
             target: mg100
             app: gateway

@@ -12,11 +12,11 @@
 
 #include <pouch/transport/ble_gatt/common/packetizer.h>
 
-#include "connect.h"
-#include "downlink.h"
-#include "types.h"
-
-#include "../uplink.h"
+#include <pouch_gateway/types.h>
+#include <pouch_gateway/uplink.h>
+#include <pouch_gateway/bt/connect.h>
+#include <pouch_gateway/bt/downlink.h>
+#include <pouch_gateway/bt/uplink.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(uplink_gatt);
@@ -31,7 +31,7 @@ static uint8_t handle_uplink_payload(struct bt_conn *conn, const void *data, uin
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "Uplink", (int) payload_len);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -40,19 +40,19 @@ static uint8_t handle_uplink_payload(struct bt_conn *conn, const void *data, uin
         LOG_HEXDUMP_INF(data, length, "[READ] BLE GATT Uplink");
     }
 
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
-    int ret = pouch_uplink_write(node->uplink, payload, payload_len, is_last);
+    int ret = pouch_gateway_uplink_write(node->uplink, payload, payload_len, is_last);
     if (ret)
     {
         LOG_ERR("Failed to write to pouch (err %d)", ret);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
     if (is_last)
     {
-        pouch_uplink_close(node->uplink);
+        pouch_gateway_uplink_close(node->uplink);
         node->uplink = NULL;
 
         return BT_GATT_ITER_STOP;
@@ -105,34 +105,34 @@ static uint8_t tf_uplink_indicate_cb(struct bt_conn *conn,
     return handle_uplink_payload(conn, data, length);
 }
 
-void gateway_uplink_start(struct bt_conn *conn)
+void pouch_gateway_uplink_start(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
-    struct downlink_context *downlink = gateway_downlink_start(conn);
+    struct pouch_gateway_downlink_context *downlink = pouch_gateway_downlink_start(conn);
 
-    node->uplink = pouch_uplink_open(downlink);
+    node->uplink = pouch_gateway_uplink_open(downlink);
     if (node->uplink == NULL)
     {
         LOG_ERR("Failed to open pouch uplink");
-        (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return;
     }
 
-    if (node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].ccc)
+    if (node->attr_handles[POUCH_GATEWAY_GATT_ATTR_UPLINK].ccc)
     {
         struct bt_gatt_subscribe_params *subscribe_params = &node->subscribe_params;
         memset(subscribe_params, 0, sizeof(*subscribe_params));
 
         subscribe_params->notify = tf_uplink_indicate_cb;
         subscribe_params->value = BT_GATT_CCC_INDICATE;
-        subscribe_params->value_handle = node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].value;
-        subscribe_params->ccc_handle = node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].ccc;
+        subscribe_params->value_handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_UPLINK].value;
+        subscribe_params->ccc_handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_UPLINK].ccc;
         int err = bt_gatt_subscribe(conn, subscribe_params);
         if (err)
         {
             LOG_ERR("BT subscribe request failed: %d", err);
-            (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            pouch_gateway_bt_finished(conn);
         }
     }
     else
@@ -142,23 +142,23 @@ void gateway_uplink_start(struct bt_conn *conn)
 
         read_params->func = tf_uplink_read_cb;
         read_params->handle_count = 1;
-        read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_UPLINK].value;
+        read_params->single.handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_UPLINK].value;
         int err = bt_gatt_read(conn, read_params);
         if (err)
         {
             LOG_ERR("BT read request failed: %d", err);
-            (void) bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            pouch_gateway_bt_finished(conn);
         }
     }
 }
 
-void gateway_uplink_cleanup(struct bt_conn *conn)
+void pouch_gateway_uplink_cleanup(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     if (node->uplink)
     {
-        pouch_uplink_close(node->uplink);
+        pouch_gateway_uplink_close(node->uplink);
         node->uplink = NULL;
     }
 }

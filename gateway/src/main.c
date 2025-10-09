@@ -5,6 +5,8 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/hci.h>
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/dhcpv4.h>
 
@@ -12,13 +14,13 @@
 #include <golioth/gateway.h>
 #include <samples/common/sample_credentials.h>
 
-#include <gateway/bt/scan.h>
-
 #include <pouch/transport/ble_gatt/common/types.h>
 
-#include "cert.h"
-#include "downlink.h"
-#include "uplink.h"
+#include <pouch_gateway/bt/connect.h>
+#include <pouch_gateway/bt/scan.h>
+#include <pouch_gateway/cert.h>
+#include <pouch_gateway/downlink.h>
+#include <pouch_gateway/uplink.h>
 
 #include <git_describe.h>
 
@@ -27,7 +29,7 @@ LOG_MODULE_REGISTER(main);
 
 struct golioth_client *client;
 
-#ifdef CONFIG_GATEWAY_CLOUD
+#ifdef CONFIG_POUCH_GATEWAY_CLOUD
 
 static K_SEM_DEFINE(connected, 0, 1);
 
@@ -134,11 +136,56 @@ static void connect_to_cloud(void)
     k_sem_take(&connected, K_FOREVER);
 }
 
-#else /* CONFIG_GATEWAY_CLOUD */
+#else /* CONFIG_POUCH_GATEWAY_CLOUD */
 
 static inline void connect_to_cloud(void) {}
 
-#endif /* CONFIG_GATEWAY_CLOUD */
+#endif /* CONFIG_POUCH_GATEWAY_CLOUD */
+
+static void bt_connected(struct bt_conn *conn, uint8_t err)
+{
+    char addr[BT_ADDR_LE_STR_LEN];
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+    if (err)
+    {
+        LOG_ERR("Failed to connect to %s %u %s", addr, err, bt_hci_err_to_str(err));
+
+        bt_conn_unref(conn);
+
+        pouch_gateway_scan_start();
+        return;
+    }
+
+    LOG_INF("Connected: %s", addr);
+
+    pouch_gateway_bt_start(conn);
+}
+
+static void bt_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    char addr[BT_ADDR_LE_STR_LEN];
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+    LOG_INF("Disconnected: %s, reason 0x%02x %s", addr, reason, bt_hci_err_to_str(reason));
+
+    pouch_gateway_bt_stop(conn);
+
+    bt_conn_unref(conn);
+
+    pouch_gateway_scan_start();
+}
+
+BT_CONN_CB_DEFINE(conn_callbacks) = {
+    .connected = bt_connected,
+    .disconnected = bt_disconnected,
+};
+
+void pouch_gateway_bt_finished(struct bt_conn *conn)
+{
+    bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+}
 
 int main(void)
 {
@@ -147,9 +194,9 @@ int main(void)
 
     connect_to_cloud();
 
-    cert_module_on_connected(client);
-    pouch_uplink_init(client);
-    downlink_module_init(client);
+    pouch_gateway_cert_module_on_connected(client);
+    pouch_gateway_uplink_init(client);
+    pouch_gateway_downlink_module_init(client);
 
     int err = bt_enable(NULL);
     if (err)
@@ -160,13 +207,13 @@ int main(void)
 
     LOG_INF("Bluetooth initialized");
 
-    gateway_scan_start();
+    pouch_gateway_scan_start();
 
-#ifdef CONFIG_GATEWAY_CLOUD
+#ifdef CONFIG_POUCH_GATEWAY_CLOUD
     while (true)
     {
         k_sem_take(&connected, K_FOREVER);
-        cert_module_on_connected(client);
+        pouch_gateway_cert_module_on_connected(client);
     }
 #endif
 

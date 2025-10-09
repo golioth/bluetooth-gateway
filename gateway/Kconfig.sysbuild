@@ -3,7 +3,7 @@
 
 menu "Gateway configuration"
 
-config GATEWAY_CLOUD
+config POUCH_GATEWAY_CLOUD
 	bool "Send pouches to cloud"
 	default y
 	help
@@ -24,7 +24,7 @@ menu "BabbleSim components"
 
 config BSIM_HANDBRAKE
 	bool "Handbrake"
-	default y if GATEWAY_CLOUD
+	default y if POUCH_GATEWAY_CLOUD
 
 endmenu
 

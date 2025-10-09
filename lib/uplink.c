@@ -11,8 +11,8 @@
 #include <golioth/gateway.h>
 #include <golioth/stream.h>
 
-#include "uplink.h"
-#include "downlink.h"
+#include <pouch_gateway/downlink.h>
+#include <pouch_gateway/uplink.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(uplink);
@@ -30,7 +30,7 @@ struct pouch_block
     uint8_t data[CONFIG_GOLIOTH_BLOCKWISE_UPLOAD_MAX_BLOCK_SIZE];
 };
 
-struct pouch_uplink
+struct pouch_gateway_uplink
 {
     struct gateway_uplink *session;
     uint32_t block_idx;
@@ -42,11 +42,11 @@ struct pouch_uplink
 
 static struct golioth_client *client;
 
-static void process_uplink(struct pouch_uplink *uplink);
+static void process_uplink(struct pouch_gateway_uplink *uplink);
 
-static void cleanup_uplink(struct pouch_uplink *uplink)
+static void cleanup_uplink(struct pouch_gateway_uplink *uplink)
 {
-    if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    if (IS_ENABLED(CONFIG_POUCH_GATEWAY_CLOUD))
     {
         golioth_gateway_uplink_finish(uplink->session);
     }
@@ -69,7 +69,7 @@ static void block_upload_callback(struct golioth_client *client,
                                   size_t block_size,
                                   void *arg)
 {
-    struct pouch_uplink *uplink = arg;
+    struct pouch_gateway_uplink *uplink = arg;
 
     if (!atomic_test_and_clear_bit(uplink->flags, POUCH_UPLINK_SENDING))
     {
@@ -90,7 +90,7 @@ static void block_upload_callback(struct golioth_client *client,
     process_uplink(uplink);
 }
 
-static void process_uplink(struct pouch_uplink *uplink)
+static void process_uplink(struct pouch_gateway_uplink *uplink)
 {
     enum golioth_status status;
     if (atomic_test_and_set_bit(uplink->flags, POUCH_UPLINK_SENDING))
@@ -119,7 +119,7 @@ static void process_uplink(struct pouch_uplink *uplink)
 
     LOG_DBG("Processing block %zu of size %zu", uplink->block_idx, uplink->rblock->len);
 
-    if (!IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    if (!IS_ENABLED(CONFIG_POUCH_GATEWAY_CLOUD))
     {
         return;
     }
@@ -149,7 +149,7 @@ static void process_uplink(struct pouch_uplink *uplink)
     }
 }
 
-static struct pouch_block *block_alloc(struct pouch_uplink *uplink)
+static struct pouch_block *block_alloc(struct pouch_gateway_uplink *uplink)
 {
     struct pouch_block *block = malloc(sizeof(struct pouch_block));
     if (block == NULL)
@@ -163,17 +163,17 @@ static struct pouch_block *block_alloc(struct pouch_uplink *uplink)
     return block;
 }
 
-static void submit_block(struct pouch_uplink *uplink)
+static void submit_block(struct pouch_gateway_uplink *uplink)
 {
     LOG_DBG("Submitting block of size %zu", uplink->wblock->len);
     sys_slist_append(&uplink->queue, &uplink->wblock->node);
     uplink->wblock = NULL;
 }
 
-int pouch_uplink_write(struct pouch_uplink *uplink,
-                       const uint8_t *payload,
-                       size_t len,
-                       bool is_last)
+int pouch_gateway_uplink_write(struct pouch_gateway_uplink *uplink,
+                               const uint8_t *payload,
+                               size_t len,
+                               bool is_last)
 {
     while (len)
     {
@@ -203,7 +203,7 @@ int pouch_uplink_write(struct pouch_uplink *uplink,
 
     if (is_last)
     {
-        pouch_uplink_close(uplink);
+        pouch_gateway_uplink_close(uplink);
     }
     else
     {
@@ -213,14 +213,15 @@ int pouch_uplink_write(struct pouch_uplink *uplink,
     return 0;
 }
 
-void pouch_uplink_init(struct golioth_client *c)
+void pouch_gateway_uplink_init(struct golioth_client *c)
 {
     client = c;
 }
 
-struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
+struct pouch_gateway_uplink *pouch_gateway_uplink_open(
+    struct pouch_gateway_downlink_context *downlink)
 {
-    struct pouch_uplink *uplink = malloc(sizeof(struct pouch_uplink));
+    struct pouch_gateway_uplink *uplink = malloc(sizeof(struct pouch_gateway_uplink));
     if (uplink == NULL)
     {
         return NULL;
@@ -233,10 +234,12 @@ struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
         return NULL;
     }
 
-    if (IS_ENABLED(CONFIG_GATEWAY_CLOUD))
+    if (IS_ENABLED(CONFIG_POUCH_GATEWAY_CLOUD))
     {
-        uplink->session =
-            golioth_gateway_uplink_start(client, downlink_block_cb, downlink_end_cb, downlink);
+        uplink->session = golioth_gateway_uplink_start(client,
+                                                       pouch_gateway_downlink_block_cb,
+                                                       pouch_gateway_downlink_end_cb,
+                                                       downlink);
         if (uplink->session == NULL)
         {
             LOG_ERR("Failed to start blockwise upload");
@@ -254,7 +257,7 @@ struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
     return uplink;
 }
 
-void pouch_uplink_close(struct pouch_uplink *uplink)
+void pouch_gateway_uplink_close(struct pouch_gateway_uplink *uplink)
 {
     bool closed = atomic_test_and_set_bit(uplink->flags, POUCH_UPLINK_CLOSED);
 

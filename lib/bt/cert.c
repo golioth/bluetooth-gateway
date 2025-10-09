@@ -12,11 +12,11 @@
 
 #include <pouch/transport/ble_gatt/common/packetizer.h>
 
-#include "cert.h"
-#include "connect.h"
-#include "uplink.h"
+#include <pouch_gateway/bt/cert.h>
+#include <pouch_gateway/bt/connect.h>
+#include <pouch_gateway/bt/uplink.h>
 
-#include "../cert.h"
+#include <pouch_gateway/cert.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(cert_gatt);
@@ -30,7 +30,7 @@ static void write_response_cb(struct bt_conn *conn,
 
 static void server_cert_cleanup(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     if (node->server_cert_scratch)
     {
@@ -40,7 +40,7 @@ static void server_cert_cleanup(struct bt_conn *conn)
 
     if (node->server_cert_ctx)
     {
-        server_cert_abort(node->server_cert_ctx);
+        pouch_gateway_server_cert_abort(node->server_cert_ctx);
         node->server_cert_ctx = NULL;
     }
 
@@ -78,7 +78,7 @@ static uint8_t server_cert_read_cb(struct bt_conn *conn,
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "server cert", (int) payload_len);
         server_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -106,11 +106,11 @@ static uint8_t server_cert_read_cb(struct bt_conn *conn,
 
 static void device_cert_cleanup(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     if (node->device_cert_ctx)
     {
-        device_cert_abort(node->device_cert_ctx);
+        pouch_gateway_device_cert_abort(node->device_cert_ctx);
         node->device_cert_ctx = NULL;
     }
 }
@@ -121,7 +121,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
                                    const void *data,
                                    uint16_t length)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     if (err)
     {
@@ -133,7 +133,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     {
         LOG_ERR("No device cert");
         device_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -146,7 +146,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "device cert", (int) payload_len);
         device_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -155,20 +155,20 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
         LOG_HEXDUMP_DBG(data, length, "[READ] BLE GATT device cert");
     }
 
-    device_cert_push(node->device_cert_ctx, payload, payload_len);
+    pouch_gateway_device_cert_push(node->device_cert_ctx, payload, payload_len);
 
     if (is_last)
     {
-        int err = device_cert_finish(node->device_cert_ctx);
+        int err = pouch_gateway_device_cert_finish(node->device_cert_ctx);
         if (err)
         {
             LOG_ERR("Failed to finish device cert: %d", err);
             device_cert_cleanup(conn);
-            bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            pouch_gateway_bt_finished(conn);
             return BT_GATT_ITER_STOP;
         }
 
-        gateway_uplink_start(conn);
+        pouch_gateway_uplink_start(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -177,7 +177,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     {
         LOG_ERR("BT (re)read request failed: %d", err);
         device_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return BT_GATT_ITER_STOP;
     }
 
@@ -186,18 +186,18 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
 
 static int write_server_cert_characteristic(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
     struct bt_gatt_write_params *params = &node->write_params;
-    uint16_t server_cert_handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value;
+    uint16_t server_cert_handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_SERVER_CERT].value;
 
     size_t mtu = bt_gatt_get_mtu(conn);
-    if (mtu < BT_ATT_OVERHEAD)
+    if (mtu < POUCH_GATEWAY_BT_ATT_OVERHEAD)
     {
         LOG_ERR("MTU too small: %d", mtu);
         return -EIO;
     }
 
-    size_t len = mtu - BT_ATT_OVERHEAD;
+    size_t len = mtu - POUCH_GATEWAY_BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
         golioth_ble_gatt_packetizer_get(node->packetizer, node->server_cert_scratch, &len);
 
@@ -221,7 +221,7 @@ static int write_server_cert_characteristic(struct bt_conn *conn)
     if (0 > res)
     {
         server_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
     }
 
     return 0;
@@ -233,11 +233,11 @@ static void write_response_cb(struct bt_conn *conn,
 {
     LOG_DBG("Received write response: %d", err);
 
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
-    if (server_cert_is_complete(node->server_cert_ctx))
+    if (pouch_gateway_server_cert_is_complete(node->server_cert_ctx))
     {
-        bool is_newest = server_cert_is_newest(node->server_cert_ctx);
+        bool is_newest = pouch_gateway_server_cert_is_newest(node->server_cert_ctx);
 
         server_cert_cleanup(conn);
 
@@ -258,7 +258,7 @@ static void write_response_cb(struct bt_conn *conn,
         if (0 != ret)
         {
             server_cert_cleanup(conn);
-            bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+            pouch_gateway_bt_finished(conn);
         }
     }
 }
@@ -269,7 +269,7 @@ static enum golioth_ble_gatt_packetizer_result server_cert_fill_cb(void *dst,
 {
     bool last = false;
 
-    int ret = server_cert_get_data(user_arg, dst, dst_len, &last);
+    int ret = pouch_gateway_server_cert_get_data(user_arg, dst, dst_len, &last);
     if (-EAGAIN == ret)
     {
         LOG_DBG("Awaiting additional %s data from cloud", "server cert");
@@ -286,26 +286,26 @@ static enum golioth_ble_gatt_packetizer_result server_cert_fill_cb(void *dst,
 
 static void gateway_server_cert_write_start(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
-    if (0 == node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value)
+    if (0 == node->attr_handles[POUCH_GATEWAY_GATT_ATTR_SERVER_CERT].value)
     {
         LOG_ERR("%s characteristic undiscovered", "server cert");
         server_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return;
     }
 
-    node->server_cert_scratch = bt_gatt_mtu_malloc(conn);
+    node->server_cert_scratch = pouch_gateway_bt_gatt_mtu_malloc(conn);
     if (NULL == node->server_cert_scratch)
     {
         LOG_ERR("Could not allocate space for %s scratch buffer", "server cert");
         server_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
         return;
     }
 
-    node->server_cert_ctx = server_cert_start();
+    node->server_cert_ctx = pouch_gateway_server_cert_start();
     node->packetizer =
         golioth_ble_gatt_packetizer_start_callback(server_cert_fill_cb, node->server_cert_ctx);
 
@@ -314,44 +314,44 @@ static void gateway_server_cert_write_start(struct bt_conn *conn)
 
 static void gateway_server_cert_serial_read_start(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     struct bt_gatt_read_params *read_params = &node->read_params;
     memset(read_params, 0, sizeof(*read_params));
 
     read_params->func = server_cert_read_cb;
     read_params->handle_count = 1;
-    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value;
+    read_params->single.handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_SERVER_CERT].value;
     int err = bt_gatt_read(conn, read_params);
     if (err)
     {
         LOG_ERR("BT read request failed: %d", err);
         server_cert_cleanup(conn);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
     }
 }
 
 static void gateway_device_cert_read_start(struct bt_conn *conn)
 {
-    struct golioth_node_info *node = get_node_info(conn);
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
 
     struct bt_gatt_read_params *read_params = &node->read_params;
     memset(read_params, 0, sizeof(*read_params));
 
-    node->device_cert_ctx = device_cert_start();
+    node->device_cert_ctx = pouch_gateway_device_cert_start();
 
     read_params->func = device_cert_read_cb;
     read_params->handle_count = 1;
-    read_params->single.handle = node->attr_handles[GOLIOTH_GATT_ATTR_DEVICE_CERT].value;
+    read_params->single.handle = node->attr_handles[POUCH_GATEWAY_GATT_ATTR_DEVICE_CERT].value;
     int err = bt_gatt_read(conn, read_params);
     if (err)
     {
         LOG_ERR("BT read request failed: %d", err);
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pouch_gateway_bt_finished(conn);
     }
 }
 
-void gateway_cert_exchange_start(struct bt_conn *conn)
+void pouch_gateway_cert_exchange_start(struct bt_conn *conn)
 {
     gateway_server_cert_serial_read_start(conn);
 }

@@ -32,7 +32,7 @@ struct block
     uint8_t data[CONFIG_GOLIOTH_BLOCKWISE_UPLOAD_MAX_BLOCK_SIZE];
 };
 
-K_MEM_SLAB_DEFINE_STATIC(block_slab, sizeof(struct block), CONFIG_GATEWAY_NUM_BLOCKS, 4);
+K_MEM_SLAB_DEFINE_STATIC(block_slab, sizeof(struct block), CONFIG_POUCH_GATEWAY_NUM_BLOCKS, 4);
 
 struct block *block_alloc(void *user_data, k_timeout_t timeout)
 {
