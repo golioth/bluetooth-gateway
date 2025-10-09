@@ -91,7 +91,7 @@ jobs:
 
       - name: Fetch Binary Blobs
         if: ${{ matrix.blobs }}
-        run: west blobs fetch ${{ matrix.blobs }}
+        run: west blobs fetch -a ${{ matrix.blobs }}
 
       - name: Build
         id: build

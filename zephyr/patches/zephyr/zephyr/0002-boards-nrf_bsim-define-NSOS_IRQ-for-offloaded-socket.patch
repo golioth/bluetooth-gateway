@@ -1,4 +1,4 @@
-From 2c56ec7effb568b9963826d25e7b3c91dd7a415d Mon Sep 17 00:00:00 2001
+From dacb35a6427d1f177bada3e10cea8162af5c0757 Mon Sep 17 00:00:00 2001
 From: Marcin Niestroj <m.niestroj@emb.dev>
 Date: Tue, 14 Jan 2025 17:02:25 +0100
 Subject: [PATCH] boards: nrf_bsim: define NSOS_IRQ for offloaded sockets
@@ -52,5 +52,5 @@ index e0b1cb60a59..a99916ec2cf 100644
  #define FLASH_PAGE_MAX_CNT		256UL
  
 -- 
-2.48.1
+2.51.0
 

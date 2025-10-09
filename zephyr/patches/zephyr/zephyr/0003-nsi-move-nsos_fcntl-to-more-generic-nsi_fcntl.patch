@@ -1,4 +1,4 @@
-From 67c60284f73d79d8b6bb4aafe03bfa4a77bf34b9 Mon Sep 17 00:00:00 2001
+From 5664e6eff028f7dfb50dcbd0e34775b8a057f5e1 Mon Sep 17 00:00:00 2001
 From: Marcin Niestroj <m.niestroj@emb.dev>
 Date: Tue, 5 Aug 2025 18:18:07 +0200
 Subject: [PATCH] nsi: move nsos_fcntl to more generic nsi_fcntl
@@ -76,7 +76,7 @@ index ba3e44fd1f4..f439fc76592 100644
    target_sources(native_simulator INTERFACE nsos_netdb.c)
  endif()
 diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
-index 7b176606cfb..e8db41fb341 100644
+index 30f3b4fb30f..10deb67c02d 100644
 --- a/drivers/net/Kconfig
 +++ b/drivers/net/Kconfig
 @@ -250,6 +250,7 @@ menuconfig NET_NATIVE_OFFLOADED_SOCKETS
@@ -243,10 +243,10 @@ index 3cab88896f7..00000000000
 -
 -#endif /* __DRIVERS_NET_NSOS_FCNTL_H__ */
 diff --git a/drivers/net/nsos_sockets.c b/drivers/net/nsos_sockets.c
-index 7820bcd1fc8..2c9a7a1a60a 100644
+index fdf5a7e8bbf..a3b5d4aa8d6 100644
 --- a/drivers/net/nsos_sockets.c
 +++ b/drivers/net/nsos_sockets.c
-@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER(nsos_sockets);
+@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(nsos_sockets);
  #include "sockets_internal.h"
  #include "nsos.h"
  #include "nsi_errno.h"
@@ -255,7 +255,7 @@ index 7820bcd1fc8..2c9a7a1a60a 100644
  #include "nsos_netdb.h"
  #include "nsos_socket.h"
  
-@@ -386,14 +386,14 @@ static int nsos_ioctl(void *obj, unsigned int request, va_list args)
+@@ -388,14 +388,14 @@ static int nsos_ioctl(void *obj, unsigned int request, va_list args)
  
  		flags = nsos_adapt_fcntl_getfl(sock->poll.mid.fd);
  
@@ -272,7 +272,7 @@ index 7820bcd1fc8..2c9a7a1a60a 100644
  		if (ret < 0) {
  			return -nsi_errno_from_mid(-ret);
  		}
-@@ -614,7 +614,7 @@ static int nsos_poll_if_blocking(struct nsos_socket *sock, int events,
+@@ -616,7 +616,7 @@ static int nsos_poll_if_blocking(struct nsos_socket *sock, int events,
  		non_blocking = true;
  	} else {
  		sock_flags = nsos_adapt_fcntl_getfl(sock->poll.mid.fd);
@@ -281,7 +281,7 @@ index 7820bcd1fc8..2c9a7a1a60a 100644
  	}
  
  	if (!non_blocking) {
-@@ -656,7 +656,7 @@ static int nsos_connect_blocking(struct nsos_socket *sock,
+@@ -658,7 +658,7 @@ static int nsos_connect_blocking(struct nsos_socket *sock,
  	int clear_nonblock_ret;
  	int ret;
  
@@ -290,7 +290,7 @@ index 7820bcd1fc8..2c9a7a1a60a 100644
  	if (ret < 0) {
  		return ret;
  	}
-@@ -705,7 +705,7 @@ static int nsos_connect(void *obj, const struct sockaddr *addr, socklen_t addrle
+@@ -707,7 +707,7 @@ static int nsos_connect(void *obj, const struct sockaddr *addr, socklen_t addrle
  
  	flags = nsos_adapt_fcntl_getfl(sock->poll.mid.fd);
  
@@ -425,5 +425,5 @@ index 00000000000..d1fb298a532
 +	return flags;
 +}
 -- 
-2.50.1
+2.51.0
 
