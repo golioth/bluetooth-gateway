@@ -34,7 +34,7 @@ struct pouch_uplink
 {
     struct gateway_uplink *session;
     uint32_t block_idx;
-    atomic_t flags;
+    atomic_t flags[1];
     struct pouch_block *wblock;
     struct pouch_block *rblock;
     sys_slist_t queue;
@@ -71,7 +71,7 @@ static void block_upload_callback(struct golioth_client *client,
 {
     struct pouch_uplink *uplink = arg;
 
-    if (!atomic_test_and_clear_bit(&uplink->flags, POUCH_UPLINK_SENDING))
+    if (!atomic_test_and_clear_bit(uplink->flags, POUCH_UPLINK_SENDING))
     {
         LOG_ERR("Not sending");
         return;
@@ -93,13 +93,13 @@ static void block_upload_callback(struct golioth_client *client,
 static void process_uplink(struct pouch_uplink *uplink)
 {
     enum golioth_status status;
-    if (atomic_test_and_set_bit(&uplink->flags, POUCH_UPLINK_SENDING))
+    if (atomic_test_and_set_bit(uplink->flags, POUCH_UPLINK_SENDING))
     {
         LOG_DBG("Already processing queue");
         return;
     }
 
-    bool closed = atomic_test_bit(&uplink->flags, POUCH_UPLINK_CLOSED);
+    bool closed = atomic_test_bit(uplink->flags, POUCH_UPLINK_CLOSED);
 
     sys_snode_t *n = sys_slist_get(&uplink->queue);
     if (n == NULL)
@@ -111,7 +111,7 @@ static void process_uplink(struct pouch_uplink *uplink)
             return;
         }
 
-        atomic_clear_bit(&uplink->flags, POUCH_UPLINK_SENDING);
+        atomic_clear_bit(uplink->flags, POUCH_UPLINK_SENDING);
         return;
     }
 
@@ -130,7 +130,7 @@ static void process_uplink(struct pouch_uplink *uplink)
 
         free(uplink->rblock);
         uplink->rblock = NULL;
-        atomic_clear_bit(&uplink->flags, POUCH_UPLINK_SENDING);
+        atomic_clear_bit(uplink->flags, POUCH_UPLINK_SENDING);
 
         return;
     }
@@ -248,7 +248,7 @@ struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
 
     uplink->rblock = NULL;
     uplink->block_idx = 0;
-    atomic_set(&uplink->flags, 0);
+    atomic_set(uplink->flags, 0);
     sys_slist_init(&uplink->queue);
 
     return uplink;
@@ -256,7 +256,7 @@ struct pouch_uplink *pouch_uplink_open(struct downlink_context *downlink)
 
 void pouch_uplink_close(struct pouch_uplink *uplink)
 {
-    bool closed = atomic_test_and_set_bit(&uplink->flags, POUCH_UPLINK_CLOSED);
+    bool closed = atomic_test_and_set_bit(uplink->flags, POUCH_UPLINK_CLOSED);
 
     if (!closed && uplink->wblock != NULL)
     {
