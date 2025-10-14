@@ -52,7 +52,14 @@ static int write_downlink_characteristic(struct bt_conn *conn)
     struct bt_gatt_write_params *params = &node->write_params;
     uint16_t downlink_handle = node->attr_handles[GOLIOTH_GATT_ATTR_DOWNLINK].value;
 
-    size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
+    size_t mtu = bt_gatt_get_mtu(conn);
+    if (mtu < BT_ATT_OVERHEAD)
+    {
+        LOG_ERR("MTU too small: %d", mtu);
+        return -EIO;
+    }
+
+    size_t len = mtu - BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
         golioth_ble_gatt_packetizer_get(node->packetizer, node->downlink_scratch, &len);
 
@@ -154,7 +161,7 @@ struct downlink_context *gateway_downlink_start(struct bt_conn *conn)
         return NULL;
     }
 
-    node->downlink_scratch = malloc(bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD);
+    node->downlink_scratch = bt_gatt_mtu_malloc(conn);
     if (NULL == node->downlink_scratch)
     {
         LOG_ERR("Could not allocate space for downlink scratch buffer");

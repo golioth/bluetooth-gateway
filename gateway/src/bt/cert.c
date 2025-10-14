@@ -189,7 +189,15 @@ static int write_server_cert_characteristic(struct bt_conn *conn)
     struct golioth_node_info *node = get_node_info(conn);
     struct bt_gatt_write_params *params = &node->write_params;
     uint16_t server_cert_handle = node->attr_handles[GOLIOTH_GATT_ATTR_SERVER_CERT].value;
-    size_t len = bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD;
+
+    size_t mtu = bt_gatt_get_mtu(conn);
+    if (mtu < BT_ATT_OVERHEAD)
+    {
+        LOG_ERR("MTU too small: %d", mtu);
+        return -EIO;
+    }
+
+    size_t len = mtu - BT_ATT_OVERHEAD;
     enum golioth_ble_gatt_packetizer_result ret =
         golioth_ble_gatt_packetizer_get(node->packetizer, node->server_cert_scratch, &len);
 
@@ -288,7 +296,7 @@ static void gateway_server_cert_write_start(struct bt_conn *conn)
         return;
     }
 
-    node->server_cert_scratch = malloc(bt_gatt_get_mtu(conn) - BT_ATT_OVERHEAD);
+    node->server_cert_scratch = bt_gatt_mtu_malloc(conn);
     if (NULL == node->server_cert_scratch)
     {
         LOG_ERR("Could not allocate space for %s scratch buffer", "server cert");

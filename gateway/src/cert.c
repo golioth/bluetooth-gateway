@@ -68,6 +68,7 @@ int device_cert_finish(struct device_cert_context *context)
     status = golioth_gateway_device_cert_set(_client, context->buf, context->len, 5);
     if (status != GOLIOTH_OK)
     {
+        LOG_ERR("Failed to finish device cert: %d", status);
         return -EIO;
     }
 

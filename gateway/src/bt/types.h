@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <zephyr/bluetooth/gatt.h>
 
 #define BT_ATT_OVERHEAD 3 /* opcode (1) + handle (2) */
@@ -46,3 +47,19 @@ struct golioth_node_info
     struct device_cert_context *device_cert_ctx;
     struct server_cert_context *server_cert_ctx;
 };
+
+/**
+ * Allocate a buffer the size of the current MTU for GATT operations.
+ * @param conn Bluetooth connection
+ * @return Pointer to allocated buffer or NULL on failure
+ */
+static inline void *bt_gatt_mtu_malloc(struct bt_conn *conn)
+{
+    size_t mtu = bt_gatt_get_mtu(conn);
+    if (mtu < BT_ATT_OVERHEAD)
+    {
+        return NULL;
+    }
+
+    return malloc(mtu - BT_ATT_OVERHEAD);
+}
