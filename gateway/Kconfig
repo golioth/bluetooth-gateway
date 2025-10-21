@@ -13,19 +13,6 @@ config GATEWAY_CLOUD
 	bool "Send pouches to cloud"
 	default y
 
-if GATEWAY_CLOUD
-
-config GATEWAY_UPLINK_TIMEOUT
-    int "Uplink timeout"
-    default 10
-    help
-      Timeout for uplink in seconds. This is the maximum time the
-      gateway will wait for an uplink to be sent to the cloud. If the
-      timeout is reached, the gateway will stop waiting and continue
-      with other tasks.
-
-endif # GATEWAY_CLOUD
-
 config GATEWAY_NUM_BLOCKS
     int "Number of blocks in downlink/uplink buffer"
     default 10
