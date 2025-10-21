@@ -25,8 +25,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
 
-#define SYNC_TIMEOUT_S 2
-
 struct golioth_client *client;
 
 #ifdef CONFIG_GATEWAY_CLOUD
