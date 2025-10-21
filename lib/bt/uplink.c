@@ -25,8 +25,12 @@ static uint8_t handle_uplink_payload(struct bt_conn *conn, const void *data, uin
 {
     bool is_first = false;
     bool is_last = false;
+    unsigned int seq;
     const void *payload = NULL;
-    ssize_t payload_len = pouch_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
+
+    ssize_t payload_len =
+        pouch_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last, &seq);
+
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "Uplink", (int) payload_len);
