@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#pragma once
+
 struct golioth_client;
 struct device_cert_context;
 struct server_cert_context;
