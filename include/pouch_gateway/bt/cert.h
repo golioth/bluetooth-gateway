@@ -6,4 +6,9 @@
 
 #pragma once
 
+/**
+ * Start certificate exchange for the given Bluetooth connection.
+ *
+ * @param conn The Bluetooth connection.
+ */
 void pouch_gateway_cert_exchange_start(struct bt_conn *conn);
