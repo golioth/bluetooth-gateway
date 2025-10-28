@@ -90,6 +90,7 @@ jobs:
             -c -v -W                                                              \
             -p nrf52_bsim/native                                                  \
             -T bluetooth-gateway/gateway/                                         \
+            -T bluetooth-gateway/samples/custom_connect                           \
             --pytest-args="--api-url=${{ inputs.api_url }}"                       \
             --pytest-args="--api-key=${{ secrets[inputs.api_key_id] }}"           \
             -x SB_CONFIG_GOLIOTH_COAP_HOST_URI=\"${{ inputs.coap_gateway_url }}\"
