@@ -82,6 +82,42 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 }
 #endif /* CONFIG_NRF_MODEM */
 
+#ifdef CONFIG_MODEM_HL7800
+#define NET_MGMT_MASK (NET_EVENT_DNS_SERVER_ADD | NET_EVENT_L4_DISCONNECTED)
+#include <zephyr/net/conn_mgr_monitor.h>
+#include <zephyr/net/conn_mgr_connectivity.h>
+#include <zephyr/net/net_mgmt.h>
+
+static K_SEM_DEFINE(network_connected, 0, 1);
+
+static struct net_mgmt_event_callback cb;
+
+static void net_mgmt_cb(struct net_mgmt_event_callback *cb, uint64_t event, struct net_if *iface)
+{
+    switch (event)
+    {
+        case NET_EVENT_DNS_SERVER_ADD:
+            LOG_INF("Network connectivity established and IP address assigned");
+            k_sem_give(&network_connected);
+            break;
+        case NET_EVENT_L4_DISCONNECTED:
+            break;
+        default:
+            break;
+    }
+}
+
+void wait_for_network(void)
+{
+    net_mgmt_init_event_callback(&cb, net_mgmt_cb, NET_MGMT_MASK);
+    net_mgmt_add_event_callback(&cb);
+    conn_mgr_mon_resend_status();
+
+    LOG_INF("Waiting for network connection...");
+    k_sem_take(&network_connected, K_FOREVER);
+}
+#endif /* CONFIG_MODEM_HL7800 */
+
 static void connect_to_cloud(void)
 {
 #if defined(CONFIG_NRF_MODEM)
@@ -90,11 +126,11 @@ static void connect_to_cloud(void)
 #else
 #if defined(CONFIG_NET_L2_ETHERNET) && defined(CONFIG_NET_DHCPV4)
     net_dhcpv4_start(net_if_get_default());
+#elif defined(CONFIG_MODEM_HL7800)
+    wait_for_network();
 #endif
     connect_golioth_client();
 #endif
-
-    LOG_INF("Waiting for network connection");
     k_sem_take(&connected, K_FOREVER);
 }
 
