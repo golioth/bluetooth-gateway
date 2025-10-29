@@ -18,6 +18,7 @@ of the following targets that are already configured for this application:
 - NXP FRDM-RW612
 - Nordic Thingy:91 X
 - Nordic nRF9160DK
+- Sentrius MG100 Gateway
 
 ### Release Binaries
 
@@ -125,6 +126,27 @@ CLI tool.
 
 </details>
 
+<details>
+
+<summary>Flashing the MG100</summary>
+
+1. Install the
+[`nrfutil`](https://www.nordicsemi.com/Products/Development-tools/nRF-Util)
+CLI tool.
+2. Program the nRF52840 Gateway Firmware
+
+    a. Connect the Tag-Connect adapter and Segger debugger to J5 on the
+    PCBA
+
+    b. Issue the following command:
+    ```
+    nrfutil device program --firmware mg100.hex --x-family nrf52
+    ```
+    c. Power cycle the device
+
+</details>
+
+
 ### Provisioning
 
 To use the Gateway, it needs to be provisioned with credentials for Golioth.
@@ -208,6 +230,25 @@ Controller over UART. Build and flash it with:
 
 ```
 west build -p -b nrf9160dk/nrf9160/ns bluetooth-gateway/gateway --sysbuild
+west flash
+```
+
+#### MG100
+
+Setup repo with Zephyr:
+
+```
+west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-zephyr.yml
+west update
+west zephyr-export
+pip install -r zephyr/scripts/requirements.txt
+```
+
+Gateway firmware runs on nRF52840 chip. There is direct access to LTE
+modem and also Bluetooth Host stack. Build and flash it with:
+
+```
+west build -p -b mg100 bluetooth-gateway/gateway --sysbuild
 west flash
 ```
 
