@@ -42,7 +42,7 @@ struct pouch_gateway_node_info
     struct pouch_gateway_downlink_context *downlink_ctx;
     void *downlink_scratch;
     void *server_cert_scratch;
-    struct golioth_ble_gatt_packetizer *packetizer;
+    struct pouch_gatt_packetizer *packetizer;
     struct pouch_gateway_uplink *uplink;
     struct pouch_gateway_device_cert_context *device_cert_ctx;
     struct pouch_gateway_server_cert_context *server_cert_ctx;

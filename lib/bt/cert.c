@@ -10,7 +10,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 
-#include <pouch/transport/ble_gatt/common/packetizer.h>
+#include <pouch/transport/gatt/common/packetizer.h>
 
 #include <pouch_gateway/bt/cert.h>
 #include <pouch_gateway/bt/connect.h>
@@ -46,7 +46,7 @@ static void server_cert_cleanup(struct bt_conn *conn)
 
     if (node->packetizer)
     {
-        golioth_ble_gatt_packetizer_finish(node->packetizer);
+        pouch_gatt_packetizer_finish(node->packetizer);
         node->packetizer = NULL;
     }
 }
@@ -72,8 +72,7 @@ static uint8_t server_cert_read_cb(struct bt_conn *conn,
     bool is_first = false;
     bool is_last = false;
     const void *payload = NULL;
-    ssize_t payload_len =
-        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
+    ssize_t payload_len = pouch_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "server cert", (int) payload_len);
@@ -140,8 +139,7 @@ static uint8_t device_cert_read_cb(struct bt_conn *conn,
     bool is_first = false;
     bool is_last = false;
     const void *payload = NULL;
-    ssize_t payload_len =
-        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
+    ssize_t payload_len = pouch_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "device cert", (int) payload_len);
@@ -198,12 +196,12 @@ static int write_server_cert_characteristic(struct bt_conn *conn)
     }
 
     size_t len = mtu - POUCH_GATEWAY_BT_ATT_OVERHEAD;
-    enum golioth_ble_gatt_packetizer_result ret =
-        golioth_ble_gatt_packetizer_get(node->packetizer, node->server_cert_scratch, &len);
+    enum pouch_gatt_packetizer_result ret =
+        pouch_gatt_packetizer_get(node->packetizer, node->server_cert_scratch, &len);
 
-    if (GOLIOTH_BLE_GATT_PACKETIZER_ERROR == ret)
+    if (POUCH_GATT_PACKETIZER_ERROR == ret)
     {
-        ret = golioth_ble_gatt_packetizer_error(node->packetizer);
+        ret = pouch_gatt_packetizer_error(node->packetizer);
         LOG_ERR("Error getting %s data %d", "server cert", ret);
         return ret;
     }
@@ -263,9 +261,9 @@ static void write_response_cb(struct bt_conn *conn,
     }
 }
 
-static enum golioth_ble_gatt_packetizer_result server_cert_fill_cb(void *dst,
-                                                                   size_t *dst_len,
-                                                                   void *user_arg)
+static enum pouch_gatt_packetizer_result server_cert_fill_cb(void *dst,
+                                                             size_t *dst_len,
+                                                             void *user_arg)
 {
     bool last = false;
 
@@ -273,15 +271,15 @@ static enum golioth_ble_gatt_packetizer_result server_cert_fill_cb(void *dst,
     if (-EAGAIN == ret)
     {
         LOG_DBG("Awaiting additional %s data from cloud", "server cert");
-        return GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+        return POUCH_GATT_PACKETIZER_MORE_DATA;
     }
     if (ret < 0)
     {
         *dst_len = 0;
-        return GOLIOTH_BLE_GATT_PACKETIZER_ERROR;
+        return POUCH_GATT_PACKETIZER_ERROR;
     }
 
-    return last ? GOLIOTH_BLE_GATT_PACKETIZER_NO_MORE_DATA : GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+    return last ? POUCH_GATT_PACKETIZER_NO_MORE_DATA : POUCH_GATT_PACKETIZER_MORE_DATA;
 }
 
 static void gateway_server_cert_write_start(struct bt_conn *conn)
@@ -307,7 +305,7 @@ static void gateway_server_cert_write_start(struct bt_conn *conn)
 
     node->server_cert_ctx = pouch_gateway_server_cert_start();
     node->packetizer =
-        golioth_ble_gatt_packetizer_start_callback(server_cert_fill_cb, node->server_cert_ctx);
+        pouch_gatt_packetizer_start_callback(server_cert_fill_cb, node->server_cert_ctx);
 
     write_server_cert_characteristic(conn);
 }

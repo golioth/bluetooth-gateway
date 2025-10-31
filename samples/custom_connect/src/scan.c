@@ -8,36 +8,35 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 
-#include <pouch/transport/ble_gatt/common/types.h>
-#include <pouch/transport/ble_gatt/common/uuids.h>
+#include <pouch/transport/gatt/common/types.h>
+#include <pouch/transport/gatt/common/uuids.h>
 
 #include "scan.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(custom_scan, LOG_LEVEL_DBG);
 
-static inline bool version_is_compatible(const struct golioth_ble_gatt_adv_data *adv_data)
+static inline bool version_is_compatible(const struct pouch_gatt_adv_data *adv_data)
 {
-    uint8_t self_ver = adv_data->version
-        & GOLIOTH_BLE_GATT_ADV_VERSION_SELF_MASK >> GOLIOTH_BLE_GATT_ADV_VERSION_SELF_SHIFT;
+    uint8_t self_ver =
+        adv_data->version & POUCH_GATT_ADV_VERSION_SELF_MASK >> POUCH_GATT_ADV_VERSION_SELF_SHIFT;
 
-    return GOLIOTH_BLE_GATT_VERSION == self_ver;
+    return POUCH_GATT_VERSION == self_ver;
 }
 
-static inline bool sync_requested(const struct golioth_ble_gatt_adv_data *adv_data)
+static inline bool sync_requested(const struct pouch_gatt_adv_data *adv_data)
 {
-    return (adv_data->flags & GOLIOTH_BLE_GATT_ADV_FLAG_SYNC_REQUEST);
+    return (adv_data->flags & POUCH_GATT_ADV_FLAG_SYNC_REQUEST);
 }
 
 struct tf_data
 {
     bool is_tf;
     bool name_is_golioth;
-    struct golioth_ble_gatt_adv_data adv_data;
+    struct pouch_gatt_adv_data adv_data;
 };
 
-static const struct bt_uuid_16 golioth_svc_uuid_16 =
-    BT_UUID_INIT_16(GOLIOTH_BLE_GATT_UUID_SVC_VAL_16);
+static const struct bt_uuid_16 golioth_svc_uuid_16 = BT_UUID_INIT_16(POUCH_GATT_UUID_SVC_VAL_16);
 
 static bool data_cb(struct bt_data *data, void *user_data)
 {
@@ -57,7 +56,7 @@ static bool data_cb(struct bt_data *data, void *user_data)
 
         case BT_DATA_SVC_DATA16:
         {
-            const struct golioth_ble_gatt_adv_data *adv_data;
+            const struct pouch_gatt_adv_data *adv_data;
 
             if (data->data_len >= sizeof(golioth_svc_uuid_16.val) + sizeof(*adv_data)
                 && memcmp(&golioth_svc_uuid_16.val, data->data, sizeof(golioth_svc_uuid_16.val))

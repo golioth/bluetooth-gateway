@@ -11,7 +11,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 
-#include <pouch/transport/ble_gatt/common/packetizer.h>
+#include <pouch/transport/gatt/common/packetizer.h>
 
 #include <pouch_gateway/bt/connect.h>
 #include <pouch_gateway/types.h>
@@ -24,9 +24,9 @@ static void write_response_cb(struct bt_conn *conn,
                               uint8_t err,
                               struct bt_gatt_write_params *params);
 
-static enum golioth_ble_gatt_packetizer_result downlink_packet_fill_cb(void *dst,
-                                                                       size_t *dst_len,
-                                                                       void *user_arg)
+static enum pouch_gatt_packetizer_result downlink_packet_fill_cb(void *dst,
+                                                                 size_t *dst_len,
+                                                                 void *user_arg)
 {
     bool last = false;
 
@@ -34,15 +34,15 @@ static enum golioth_ble_gatt_packetizer_result downlink_packet_fill_cb(void *dst
     if (-EAGAIN == ret)
     {
         LOG_DBG("Awaiting additional downlink data from cloud");
-        return GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+        return POUCH_GATT_PACKETIZER_MORE_DATA;
     }
     if (0 > ret)
     {
         *dst_len = 0;
-        return GOLIOTH_BLE_GATT_PACKETIZER_ERROR;
+        return POUCH_GATT_PACKETIZER_ERROR;
     }
 
-    return last ? GOLIOTH_BLE_GATT_PACKETIZER_NO_MORE_DATA : GOLIOTH_BLE_GATT_PACKETIZER_MORE_DATA;
+    return last ? POUCH_GATT_PACKETIZER_NO_MORE_DATA : POUCH_GATT_PACKETIZER_MORE_DATA;
 }
 
 static int write_downlink_characteristic(struct bt_conn *conn)
@@ -59,17 +59,17 @@ static int write_downlink_characteristic(struct bt_conn *conn)
     }
 
     size_t len = mtu - POUCH_GATEWAY_BT_ATT_OVERHEAD;
-    enum golioth_ble_gatt_packetizer_result ret =
-        golioth_ble_gatt_packetizer_get(node->packetizer, node->downlink_scratch, &len);
+    enum pouch_gatt_packetizer_result ret =
+        pouch_gatt_packetizer_get(node->packetizer, node->downlink_scratch, &len);
 
-    if (GOLIOTH_BLE_GATT_PACKETIZER_ERROR == ret)
+    if (POUCH_GATT_PACKETIZER_ERROR == ret)
     {
-        ret = golioth_ble_gatt_packetizer_error(node->packetizer);
+        ret = pouch_gatt_packetizer_error(node->packetizer);
         LOG_ERR("Error getting downlink data %d", ret);
         return ret;
     }
 
-    if (GOLIOTH_BLE_GATT_PACKETIZER_EMPTY_PAYLOAD == ret)
+    if (POUCH_GATT_PACKETIZER_EMPTY_PAYLOAD == ret)
     {
         LOG_DBG("No downlink data available");
         return -ENODATA;
@@ -102,7 +102,7 @@ static void write_response_cb(struct bt_conn *conn,
     if (err)
     {
         pouch_gateway_downlink_abort(node->downlink_ctx);
-        golioth_ble_gatt_packetizer_finish(node->packetizer);
+        pouch_gatt_packetizer_finish(node->packetizer);
 
         pouch_gateway_bt_finished(conn);
         return;
@@ -111,7 +111,7 @@ static void write_response_cb(struct bt_conn *conn,
     if (pouch_gateway_downlink_is_complete(node->downlink_ctx))
     {
         pouch_gateway_downlink_finish(node->downlink_ctx);
-        golioth_ble_gatt_packetizer_finish(node->packetizer);
+        pouch_gatt_packetizer_finish(node->packetizer);
 
         pouch_gateway_bt_finished(conn);
     }
@@ -121,7 +121,7 @@ static void write_response_cb(struct bt_conn *conn,
         if (0 != ret && -ENODATA != ret)
         {
             pouch_gateway_downlink_abort(node->downlink_ctx);
-            golioth_ble_gatt_packetizer_finish(node->packetizer);
+            pouch_gatt_packetizer_finish(node->packetizer);
 
             pouch_gateway_bt_finished(conn);
         }
@@ -138,7 +138,7 @@ static void downlink_data_available(void *arg)
     if (0 != ret)
     {
         pouch_gateway_downlink_abort(node->downlink_ctx);
-        golioth_ble_gatt_packetizer_finish(node->packetizer);
+        pouch_gatt_packetizer_finish(node->packetizer);
 
         pouch_gateway_bt_finished(conn);
     }
@@ -169,7 +169,7 @@ struct pouch_gateway_downlink_context *pouch_gateway_downlink_start(struct bt_co
 
     node->downlink_ctx = pouch_gateway_downlink_init(downlink_data_available, conn);
     node->packetizer =
-        golioth_ble_gatt_packetizer_start_callback(downlink_packet_fill_cb, node->downlink_ctx);
+        pouch_gatt_packetizer_start_callback(downlink_packet_fill_cb, node->downlink_ctx);
 
     return node->downlink_ctx;
 }
