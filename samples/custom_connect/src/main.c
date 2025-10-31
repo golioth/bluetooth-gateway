@@ -14,7 +14,7 @@
 #include <golioth/gateway.h>
 #include <samples/common/sample_credentials.h>
 
-#include <pouch/transport/ble_gatt/common/types.h>
+#include <pouch/transport/gatt/common/types.h>
 
 #include <pouch_gateway/bt/connect.h>
 #include <pouch_gateway/cert.h>
@@ -181,7 +181,7 @@ void pouch_gateway_bt_finished(struct bt_conn *conn)
 int main(void)
 {
     LOG_INF("Gateway Version: " STRINGIFY(GIT_DESCRIBE));
-    LOG_INF("Pouch BLE Transport Protocol Version: %d", GOLIOTH_BLE_GATT_VERSION);
+    LOG_INF("Pouch BLE Transport Protocol Version: %d", POUCH_GATT_VERSION);
 
     k_work_init_delayable(&sync_data.work, sync_start_handler);
 

@@ -10,7 +10,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 
-#include <pouch/transport/ble_gatt/common/packetizer.h>
+#include <pouch/transport/gatt/common/packetizer.h>
 
 #include <pouch_gateway/types.h>
 #include <pouch_gateway/uplink.h>
@@ -26,8 +26,7 @@ static uint8_t handle_uplink_payload(struct bt_conn *conn, const void *data, uin
     bool is_first = false;
     bool is_last = false;
     const void *payload = NULL;
-    ssize_t payload_len =
-        golioth_ble_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
+    ssize_t payload_len = pouch_gatt_packetizer_decode(data, length, &payload, &is_first, &is_last);
     if (payload_len < 0)
     {
         LOG_ERR("Failed to decode BLE GATT %s (err %d)", "Uplink", (int) payload_len);
