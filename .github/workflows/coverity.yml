@@ -14,10 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: bluetooth-gateway
+          path: pouch-gateway
       - name: Init and update west
         run: |
-          west init -l bluetooth-gateway --mf west-ncs.yml
+          west init -l pouch-gateway --mf west-ncs.yml
           west update --narrow -o=--depth=1
       - name: Install pip packages
         run: |
@@ -36,15 +36,15 @@ jobs:
           /opt/toolchains/coverity/bin/cov-configure --comptype gcc \
             --compiler /opt/toolchains/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc
           /opt/toolchains/coverity/bin/cov-build --dir cov-int \
-            west build -p -b nrf9160dk/nrf9160/ns bluetooth-gateway/gateway \
+            west build -p -b nrf9160dk/nrf9160/ns pouch-gateway/gateway \
             -- -DCONFIG_NET_LOG=n -DCONFIG_LOG=n
           tar czvf gateway.tgz cov-int
-          curl --form token=${{ secrets.BLUETOOTH_GATEWAY_COVERITY_TOKEN }} \
+          curl --form token=${{ secrets.POUCH_GATEWAY_COVERITY_TOKEN }} \
             --form email=sam@golioth.io \
             --form file=@gateway.tgz \
             --form version="0" \
             --form description="Description" \
-            https://scan.coverity.com/builds?project=golioth%2Fbluetooth-gateway
+            https://scan.coverity.com/builds?project=golioth%2Fpouch-gateway
       - uses: actions/upload-artifact@v4
         with:
           name: coverity_output

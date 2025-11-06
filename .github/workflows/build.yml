@@ -64,11 +64,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: bluetooth-gateway
+          path: pouch-gateway
 
       - name: Init and update west
         run: |
-          west init -l bluetooth-gateway --mf ${{ matrix.manifest }}
+          west init -l pouch-gateway --mf ${{ matrix.manifest }}
           west update --narrow -o=--depth=1
           git config --global user.email user@git-scm.com
           git config --global user.name "Git User"
@@ -77,7 +77,7 @@ jobs:
       - name: Manual Patch
         if: ${{ matrix.manifest == 'west-thingy91x-controller.yml' }}
         run: |
-          west forall zephyr -c "git am $GITHUB_WORKSPACE/bluetooth-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
+          west forall zephyr -c "git am $GITHUB_WORKSPACE/pouch-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
 
       - name: Install pip packages
         run: |
@@ -106,7 +106,7 @@ jobs:
         run: |
           west build \
             -b $TARGET \
-            bluetooth-gateway/${{ matrix.app }} \
+            pouch-gateway/${{ matrix.app }} \
             ${{ matrix.sysbuild && '--sysbuild' || '--no-sysbuild' }} \
             -- -DCONFIG_COMPILER_WARNINGS_AS_ERRORS=y ${{ matrix.extra_args }}
 

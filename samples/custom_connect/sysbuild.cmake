@@ -10,7 +10,7 @@ if(BOARD MATCHES "bsim")
 
   ExternalZephyrProject_Add(
     APPLICATION bsim_2G4_phy
-    SOURCE_DIR ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/bsim_bin
+    SOURCE_DIR ${ZEPHYR_POUCH_GATEWAY_MODULE_DIR}/bsim_bin
     BOARD bsim_2G4_phy
   )
   sysbuild_add_dependencies(FLASH ${DEFAULT_IMAGE} bsim_2G4_phy)
@@ -18,7 +18,7 @@ if(BOARD MATCHES "bsim")
   if(SB_CONFIG_BSIM_HANDBRAKE)
     ExternalZephyrProject_Add(
       APPLICATION bsim_handbrake
-      SOURCE_DIR ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/bsim_bin
+      SOURCE_DIR ${ZEPHYR_POUCH_GATEWAY_MODULE_DIR}/bsim_bin
       BOARD bsim_device/native/handbrake
     )
     sysbuild_add_dependencies(FLASH ${DEFAULT_IMAGE} bsim_handbrake)
@@ -60,7 +60,7 @@ if(BOARD MATCHES "bsim")
   add_peripheral(zephyr
     ${ZEPHYR_BASE}/samples/bluetooth/peripheral)
   add_peripheral(periodic_uplink
-    ${ZEPHYR_BLUETOOTH_GATEWAY_MODULE_DIR}/samples/peripheral/periodic_uplink)
+    ${ZEPHYR_POUCH_GATEWAY_MODULE_DIR}/samples/peripheral/periodic_uplink)
   add_peripheral(ble_gatt_example
     ${ZEPHYR_POUCH_MODULE_DIR}/examples/ble_gatt)
 endif()

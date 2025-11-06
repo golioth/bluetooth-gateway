@@ -28,5 +28,5 @@ manifest:
       url: https://github.com/golioth/pouch
 
   self:
-    path: bluetooth-gateway
+    path: pouch-gateway
     west-commands: scripts/west-commands.yml

@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
-project(bluetooth_gateway_controller)
+project(pouch_gateway_controller)
 
 if(CONFIG_UART_ASYNC_API AND NOT CONFIG_NRF_SW_LPUART)
   target_sources(app PRIVATE

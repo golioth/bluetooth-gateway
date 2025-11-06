@@ -1,6 +1,6 @@
-# Golioth Bluetooth Gateway
+# Golioth Pouch Gateway
 
-Golioth Bluetooth Gateway is a device capable of connecting to Golioth
+Golioth Pouch Gateway is a device capable of connecting to Golioth
 cloud and serving as proxy for Bluetooth-only devices (nodes). All
 communication between Bluetooth nodes and cloud is end-to-end encrypted
 and authenticated. This means that gateway serves as untrusted two-way
@@ -23,7 +23,7 @@ of the following targets that are already configured for this application:
 ### Release Binaries
 
 Pre-built firmware binaries for the above hardware are available in
-[GitHub](https://github.com/golioth/bluetooth-gateway/releases/latest). We
+[GitHub](https://github.com/golioth/pouch-gateway/releases/latest). We
 recommend using these binaries as the fastest way to get started.
 
 <details>
@@ -170,7 +170,7 @@ where `<psk-id>` and `<psk>` are the device credentials you created in step 1.
 Setup repo with NCS:
 
 ```
-west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-ncs.yml
+west init -m https://github.com/golioth/pouch-gateway.git --mf west-ncs.yml
 west update
 west patch apply
 ```
@@ -186,7 +186,7 @@ to checkout proper revision and apply required patches type:
 
 ```
 west config manifest.file west-thingy91x-controller.yml && west update
-west forall zephyr -c "git am $(west topdir)/bluetooth-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
+west forall zephyr -c "git am $(west topdir)/pouch-gateway/zephyr/patches/thingy91x-controller/zephyr/*.patch"
 ```
 
 Bluetooth controller is running on the nRF5340 NET core. This means that proper
@@ -197,7 +197,7 @@ This is done by by changing `SWD` switch (`SW2`) from `nRF91` to `nRF53`
 on Thingy, then building and flashing firmware with:
 
 ```
-west build -p -b thingy91x/nrf5340/cpunet bluetooth-gateway/controller --sysbuild -- -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
+west build -p -b thingy91x/nrf5340/cpunet pouch-gateway/controller --sysbuild -- -DSB_CONF_FILE=sysbuild/nrf5340_cpuapp.conf
 west flash
 ```
 
@@ -206,7 +206,7 @@ modem and also Bluetooth Host stack, which communicates with Bluetooth
 Controller over UART. Build and flash it with:
 
 ```
-west build -p -b thingy91x/nrf9151/ns bluetooth-gateway/gateway --sysbuild
+west build -p -b thingy91x/nrf9151/ns pouch-gateway/gateway --sysbuild
 west flash
 ```
 
@@ -220,7 +220,7 @@ This is done by by changing `SWD` switch (`SW10`) from `nRF91` to
 `nRF52` on development kit, then building and flashing firmware with:
 
 ```
-west build -p -b nrf9160dk/nrf52840 bluetooth-gateway/controller
+west build -p -b nrf9160dk/nrf52840 pouch-gateway/controller
 west flash
 ```
 
@@ -229,7 +229,7 @@ modem and also Bluetooth Host stack, which communicats with Bluetooth
 Controller over UART. Build and flash it with:
 
 ```
-west build -p -b nrf9160dk/nrf9160/ns bluetooth-gateway/gateway --sysbuild
+west build -p -b nrf9160dk/nrf9160/ns pouch-gateway/gateway --sysbuild
 west flash
 ```
 
@@ -238,7 +238,7 @@ west flash
 Setup repo with Zephyr:
 
 ```
-west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-zephyr.yml
+west init -m https://github.com/golioth/pouch-gateway.git --mf west-zephyr.yml
 west update
 west zephyr-export
 pip install -r zephyr/scripts/requirements.txt
@@ -248,7 +248,7 @@ Gateway firmware runs on nRF52840 chip. There is direct access to LTE
 modem and also Bluetooth Host stack. Build and flash it with:
 
 ```
-west build -p -b mg100 bluetooth-gateway/gateway --sysbuild
+west build -p -b mg100 pouch-gateway/gateway --sysbuild
 west flash
 ```
 
@@ -256,7 +256,7 @@ west flash
 
 #### Running gateway with simulator or USB dongle
 
-See [Running Bluetooth Gateway with
+See [Running Pouch Gateway with
 simulator](doc/simulator_or_usb_dongle.md).
 
 #### `CONFIG_POUCH_GATEWAY_CLOUD`
@@ -269,14 +269,14 @@ connected platforms (nRF91) there is no latency because of cellular
 network infrastructure.
 
 `CONFIG_POUCH_GATEWAY_CLOUD` is available both on the gateway applicaton level
-(`bluetooth-gateway/gateway`) as well as in sysbuild (mainly for ease of
+(`pouch-gateway/gateway`) as well as in sysbuild (mainly for ease of
 use) as `SB_CONFIG_POUCH_GATEWAY_CLOUD`.
 
 Running `nrf52_bsim` simulaton without cloud communication can be done
 with:
 
 ```
-west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
+west build -p -b nrf52_bsim pouch-gateway/gateway --sysbuild -- \
   -DSB_CONFIG_POUCH_GATEWAY_CLOUD=n
 west flash
 ```

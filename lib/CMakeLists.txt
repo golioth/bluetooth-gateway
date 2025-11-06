@@ -14,4 +14,4 @@ zephyr_library_get_current_dir_lib_name(${ZEPHYR_BASE} lib_name)
 
 generate_inc_file_for_target(${lib_name}
   server.der
-  ${ZEPHYR_BINARY_DIR}/include/generated/bluetooth_gateway_server.der.inc)
+  ${ZEPHYR_BINARY_DIR}/include/generated/pouch_gateway_server.der.inc)

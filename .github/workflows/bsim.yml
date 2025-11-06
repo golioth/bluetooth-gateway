@@ -50,11 +50,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          path: bluetooth-gateway
+          path: pouch-gateway
 
       - name: Init and update west
         run: |
-          west init -l bluetooth-gateway --mf west-zephyr.yml
+          west init -l pouch-gateway --mf west-zephyr.yml
           west update --narrow -o=--depth=1
           git config --global user.email user@git-scm.com
           git config --global user.name "Git User"
@@ -89,8 +89,8 @@ jobs:
           zephyr/scripts/twister                                                  \
             -c -v -W                                                              \
             -p nrf52_bsim/native                                                  \
-            -T bluetooth-gateway/gateway/                                         \
-            -T bluetooth-gateway/samples/custom_connect                           \
+            -T pouch-gateway/gateway/                                             \
+            -T pouch-gateway/samples/custom_connect                               \
             --pytest-args="--api-url=${{ inputs.api_url }}"                       \
             --pytest-args="--api-key=${{ secrets[inputs.api_key_id] }}"           \
             -x SB_CONFIG_GOLIOTH_COAP_HOST_URI=\"${{ inputs.coap_gateway_url }}\"
