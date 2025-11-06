@@ -164,7 +164,7 @@ void pouch_gateway_cert_module_on_connected(struct golioth_client *client)
     else if (IS_ENABLED(CONFIG_POUCH_GATEWAY_SERVER_CERT_BUILTIN))
     {
         static const uint8_t server_crt_offline[] = {
-#include "bluetooth_gateway_server.der.inc"
+#include "pouch_gateway_server.der.inc"
         };
 
         memcpy(server_crt_buf, server_crt_offline, sizeof(server_crt_offline));

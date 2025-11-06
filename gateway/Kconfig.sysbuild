@@ -7,7 +7,7 @@ config POUCH_GATEWAY_CLOUD
 	bool "Send pouches to cloud"
 	default y
 	help
-	  Disabling cloud communication allows to test Bluetooth gateway
+	  Disabling cloud communication allows to test Pouch Gateway
 	  functionality without relying on communication with backend. All
 	  pouches received from Bluetooth nodes are dropped in that case.
 

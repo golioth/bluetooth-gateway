@@ -9,7 +9,7 @@ common:
     - socket
     - goliothd
 tests:
-  sample.bluetooth_gateway.golioth.lightdb_get:
+  sample.pouch_gateway.golioth.lightdb_get:
     sysbuild: true
     platform_allow:
       - nrf52_bsim

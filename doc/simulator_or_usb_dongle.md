@@ -1,11 +1,11 @@
-# Running Bluetooth Gateway with simulator
+# Running Pouch Gateway with simulator
 
 ## Setup
 
 Vanilla Zephyr for `nrf52_bsim` and `native_sim`:
 
 ```
-west init -m https://github.com/golioth/bluetooth-gateway.git --mf west-zephyr.yml
+west init -m https://github.com/golioth/pouch-gateway.git --mf west-zephyr.yml
 west update
 west patch apply
 ```
@@ -34,7 +34,7 @@ components are BabbleSim programs:
 
 Default sysbuild configuration builds following:
 
-  * `bluetooth-gateway/gateway` (main component)
+  * `pouch-gateway/gateway` (main component)
   * `pouch/examples/zephyr/ble_gatt` (BLE GATT node)
   * `tools/bsim/bin/bs_2G4_phy_v1` (2.4G PHY BabbleSim coordinator)
   * `tools/bsim/bin/bs_device_handbrake` (BabbleSim handbrake, used to
@@ -53,7 +53,7 @@ Default example of running gateway with BLE GATT node (and required
 BabbleSim components) is done with following commands:
 
 ```
-west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
+west build -p -b nrf52_bsim pouch-gateway/gateway --sysbuild -- \
   -Dperipheral_ble_gatt_example_0_CONFIG_EXAMPLE_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"'
 west flash
 ```
@@ -61,7 +61,7 @@ west flash
 It is possible to include more BLE GATT nodes in simulation. Example of
 running 2 nodes:
 ```
-west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
+west build -p -b nrf52_bsim pouch-gateway/gateway --sysbuild -- \
   -DSB_CONFIG_PERIPHERAL_BLE_GATT_EXAMPLE_NUM=2 \
   -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"' \
   -Dperipheral_ble_gatt_example_1_CONFIG_POUCH_DEVICE_ID='"bbbbbbbbbbbbbbbbbbbbbbbb"'
@@ -73,7 +73,7 @@ is support for vanilla Zephyr peripheral sample
 `zephyr/samples/bluetooth/peripheral`:
 
 ```
-west build -p -b nrf52_bsim bluetooth-gateway/gateway --sysbuild -- \
+west build -p -b nrf52_bsim pouch-gateway/gateway --sysbuild -- \
   -DSB_CONFIG_PERIPHERAL_ZEPHYR=y \
   -Dperipheral_ble_gatt_example_0_CONFIG_POUCH_DEVICE_ID='"aaaaaaaaaaaaaaaaaaaaaaaa"'
 west flash
@@ -106,7 +106,7 @@ Build Bluetooth Controller firmware with HCI UART over USB CDC-ACM for
 nRF52840 Dongle:
 
 ```
-west build -p -b nrf52840dongle/nrf52840 bluetooth-gateway/controller
+west build -p -b nrf52840dongle/nrf52840 pouch-gateway/controller
 ```
 
 See [Programming and

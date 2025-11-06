@@ -20,5 +20,5 @@ manifest:
           - zephyr
 
   self:
-    path: bluetooth-gateway
+    path: pouch-gateway
     west-commands: scripts/west-commands.yml

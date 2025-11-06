@@ -1,7 +1,7 @@
 sample:
-  name: Bluetooth Gateway
+  name: Pouch Gateway
 tests:
-  bluetooth-gateway.gateway:
+  pouch-gateway.gateway:
     tags: bluetooth
     harness: pytest
     harness_config:
