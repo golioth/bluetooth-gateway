@@ -188,7 +188,7 @@ int main(void)
     connect_to_cloud();
 
     pouch_gateway_cert_module_on_connected(client);
-    pouch_gateway_uplink_init(client);
+    pouch_gateway_uplink_module_init(client);
     pouch_gateway_downlink_module_init(client);
 
     int err = bt_enable(NULL);

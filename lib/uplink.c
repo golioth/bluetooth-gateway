@@ -213,7 +213,7 @@ int pouch_gateway_uplink_write(struct pouch_gateway_uplink *uplink,
     return 0;
 }
 
-void pouch_gateway_uplink_init(struct golioth_client *c)
+void pouch_gateway_uplink_module_init(struct golioth_client *c)
 {
     client = c;
 }

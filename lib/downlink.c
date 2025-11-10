@@ -58,7 +58,7 @@ enum golioth_status pouch_gateway_downlink_block_cb(const uint8_t *data,
     if (atomic_test_bit(downlink->flags, DOWNLINK_FLAG_ABORTED))
     {
         flush_block_queue(&downlink->block_queue);
-        pouch_gateway_downlink_finish(downlink);
+        pouch_gateway_downlink_close(downlink);
         return GOLIOTH_ERR_NACK;
     }
 
@@ -67,7 +67,7 @@ enum golioth_status pouch_gateway_downlink_block_cb(const uint8_t *data,
     {
         LOG_ERR("Failed to allocate block");
         flush_block_queue(&downlink->block_queue);
-        pouch_gateway_downlink_finish(downlink);
+        pouch_gateway_downlink_close(downlink);
         return GOLIOTH_ERR_MEM_ALLOC;
     }
 
@@ -113,7 +113,7 @@ void pouch_gateway_downlink_end_cb(enum golioth_status status,
     }
 }
 
-struct pouch_gateway_downlink_context *pouch_gateway_downlink_init(
+struct pouch_gateway_downlink_context *pouch_gateway_downlink_open(
     pouch_gateway_downlink_data_available_cb data_available_cb,
     void *cb_arg)
 {
@@ -210,7 +210,7 @@ bool pouch_gateway_downlink_is_complete(const struct pouch_gateway_downlink_cont
     return atomic_test_bit(downlink->flags, DOWNLINK_FLAG_COMPLETE);
 }
 
-void pouch_gateway_downlink_finish(struct pouch_gateway_downlink_context *downlink)
+void pouch_gateway_downlink_close(struct pouch_gateway_downlink_context *downlink)
 {
     if (NULL != downlink->current_block)
     {
@@ -231,7 +231,7 @@ void pouch_gateway_downlink_abort(struct pouch_gateway_downlink_context *downlin
 
     if (pouch_gateway_downlink_is_complete(downlink))
     {
-        pouch_gateway_downlink_finish(downlink);
+        pouch_gateway_downlink_close(downlink);
     }
 }
 
