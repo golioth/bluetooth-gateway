@@ -110,7 +110,7 @@ static void write_response_cb(struct bt_conn *conn,
 
     if (pouch_gateway_downlink_is_complete(node->downlink_ctx))
     {
-        pouch_gateway_downlink_finish(node->downlink_ctx);
+        pouch_gateway_downlink_close(node->downlink_ctx);
         pouch_gatt_packetizer_finish(node->packetizer);
 
         pouch_gateway_bt_finished(conn);
@@ -167,7 +167,7 @@ struct pouch_gateway_downlink_context *pouch_gateway_downlink_start(struct bt_co
         return NULL;
     }
 
-    node->downlink_ctx = pouch_gateway_downlink_init(downlink_data_available, conn);
+    node->downlink_ctx = pouch_gateway_downlink_open(downlink_data_available, conn);
     node->packetizer =
         pouch_gatt_packetizer_start_callback(downlink_packet_fill_cb, node->downlink_ctx);
 

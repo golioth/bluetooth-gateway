@@ -53,4 +53,4 @@ void pouch_gateway_uplink_close(struct pouch_gateway_uplink *uplink);
  *
  * @param c The Golioth client.
  */
-void pouch_gateway_uplink_init(struct golioth_client *c);
+void pouch_gateway_uplink_module_init(struct golioth_client *c);

@@ -25,7 +25,7 @@ void pouch_gateway_downlink_module_init(struct golioth_client *client);
  * @param arg Argument for the callback.
  * @return Pointer to the downlink context.
  */
-struct pouch_gateway_downlink_context *pouch_gateway_downlink_init(
+struct pouch_gateway_downlink_context *pouch_gateway_downlink_open(
     pouch_gateway_downlink_data_available_cb data_available_cb,
     void *arg);
 
@@ -34,7 +34,7 @@ struct pouch_gateway_downlink_context *pouch_gateway_downlink_init(
  *
  * @param downlink The downlink context.
  */
-void pouch_gateway_downlink_finish(struct pouch_gateway_downlink_context *downlink);
+void pouch_gateway_downlink_close(struct pouch_gateway_downlink_context *downlink);
 
 /**
  * Abort the downlink context.
