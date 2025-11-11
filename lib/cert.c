@@ -69,11 +69,14 @@ int pouch_gateway_device_cert_finish(struct pouch_gateway_device_cert_context *c
 {
     enum golioth_status status;
 
-    status = golioth_gateway_device_cert_set(_client, context->buf, context->len, 5);
-    if (status != GOLIOTH_OK)
+    if (IS_ENABLED(CONFIG_POUCH_GATEWAY_CLOUD))
     {
-        LOG_ERR("Failed to finish device cert: %d", status);
-        return -EIO;
+        status = golioth_gateway_device_cert_set(_client, context->buf, context->len, 5);
+        if (status != GOLIOTH_OK)
+        {
+            LOG_ERR("Failed to finish device cert: %d", status);
+            return -EIO;
+        }
     }
 
     pouch_gateway_device_cert_abort(context);
