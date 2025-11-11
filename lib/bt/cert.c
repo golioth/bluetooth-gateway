@@ -88,8 +88,23 @@ static uint8_t server_cert_read_cb(struct bt_conn *conn,
 
     if (is_last)
     {
-        /* TODO: if serial matches, then server_cert write can be ignored */
-        gateway_server_cert_write_start(conn);
+        uint8_t serial[CERT_SERIAL_MAXLEN];
+        size_t serial_len = sizeof(serial);
+
+        pouch_gateway_server_cert_get_serial(serial, &serial_len);
+
+        if (payload_len > 0 && payload_len == serial_len
+            && memcmp(serial, payload, payload_len) == 0)
+        {
+            LOG_DBG("server cert match");
+            gateway_device_cert_read_start(conn);
+        }
+        else
+        {
+            LOG_DBG("server cert mismatch");
+            gateway_server_cert_write_start(conn);
+        }
+
         return BT_GATT_ITER_STOP;
     }
 
