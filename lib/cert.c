@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <mbedtls/x509_crt.h>
+#include <psa/crypto.h>
+
 #include <pouch_gateway/cert.h>
 
 #include <golioth/gateway.h>
@@ -21,6 +24,8 @@ static struct golioth_client *_client;
 
 static uint8_t server_crt_buf[CONFIG_POUCH_GATEWAY_SERVER_CERT_MAX_LEN];
 static atomic_t server_crt_len;
+static uint8_t server_crt_serial[CERT_SERIAL_MAXLEN];
+static atomic_t server_crt_serial_len;
 static atomic_t server_crt_id;
 
 struct pouch_gateway_device_cert_context
@@ -97,10 +102,28 @@ bool pouch_gateway_server_cert_is_newest(const struct pouch_gateway_server_cert_
     return context->id == atomic_get(&server_crt_id);
 }
 
-static void server_crt_update(size_t len)
+static int server_crt_update(size_t len)
 {
+    mbedtls_x509_crt cert_chain;
+
+    mbedtls_x509_crt_init(&cert_chain);
+
+    int ret = mbedtls_x509_crt_parse(&cert_chain, server_crt_buf, len);
+    if (ret < 0)
+    {
+        LOG_ERR("Failed to parse certificate: 0x%x", -ret);
+        return -EIO;
+    }
+
+    LOG_HEXDUMP_DBG(cert_chain.serial.p, cert_chain.serial.len, "cert_chain.serial");
+
+    memcpy(server_crt_serial, cert_chain.serial.p, cert_chain.serial.len);
+    atomic_set(&server_crt_serial_len, cert_chain.serial.len);
+
     atomic_set(&server_crt_len, len);
     atomic_inc(&server_crt_id);
+
+    return 0;
 }
 
 bool pouch_gateway_server_cert_is_complete(const struct pouch_gateway_server_cert_context *context)
@@ -136,6 +159,18 @@ int pouch_gateway_server_cert_get_data(struct pouch_gateway_server_cert_context 
     }
 
     return 0;
+}
+
+void pouch_gateway_server_cert_get_serial(void *dst, size_t *dst_len)
+{
+    size_t len = atomic_get(&server_crt_serial_len);
+
+    if (*dst_len > len)
+    {
+        *dst_len = len;
+    }
+
+    memcpy(dst, server_crt_serial, *dst_len);
 }
 
 void pouch_gateway_server_cert_abort(struct pouch_gateway_server_cert_context *context)

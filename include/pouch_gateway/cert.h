@@ -13,6 +13,11 @@ struct pouch_gateway_server_cert_context;
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Max serial number length is 20 bytes according to spec:
+ * https://datatracker.ietf.org/doc/html/rfc5280#section-4.1.2.2
+ */
+#define CERT_SERIAL_MAXLEN 20
+
 /**
  * Start device certificate handling.
  *
@@ -90,6 +95,14 @@ int pouch_gateway_server_cert_get_data(struct pouch_gateway_server_cert_context 
                                        void *dst,
                                        size_t *dst_len,
                                        bool *is_last);
+
+/**
+ * Get the serial number of the server certificate.
+ *
+ * @param dst Destination buffer.
+ * @param[in,out] dst_len Length of the destination buffer. Set to the number of bytes written.
+ */
+void pouch_gateway_server_cert_get_serial(void *dst, size_t *dst_len);
 
 /**
  * Callback when connected to Golioth client for certificate module.
