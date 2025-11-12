@@ -95,13 +95,38 @@ static uint8_t tf_uplink_indicate_cb(struct bt_conn *conn,
                                      const void *data,
                                      uint16_t length)
 {
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
+
     if (NULL == data)
     {
         LOG_DBG("Subscription terminated");
+
+        if (node->uplink)
+        {
+            LOG_WRN("Subscription terminated while uplink is open");
+            pouch_gateway_uplink_close(node->uplink);
+            node->uplink = NULL;
+
+            pouch_gateway_bt_finished(conn);
+        }
+
         return BT_GATT_ITER_STOP;
     }
 
     return handle_uplink_payload(conn, data, length);
+}
+
+static void uplink_end_cb(void *conn, enum pouch_gateway_uplink_result res)
+{
+    struct pouch_gateway_node_info *node = pouch_gateway_get_node_info(conn);
+    node->uplink = NULL;
+
+    bt_gatt_unsubscribe(conn, &node->subscribe_params);
+
+    if (POUCH_GATEWAY_UPLINK_SUCCESS != res)
+    {
+        pouch_gateway_bt_finished(conn);
+    }
 }
 
 void pouch_gateway_uplink_start(struct bt_conn *conn)
@@ -110,7 +135,7 @@ void pouch_gateway_uplink_start(struct bt_conn *conn)
 
     struct pouch_gateway_downlink_context *downlink = pouch_gateway_downlink_start(conn);
 
-    node->uplink = pouch_gateway_uplink_open(downlink);
+    node->uplink = pouch_gateway_uplink_open(downlink, uplink_end_cb, conn);
     if (node->uplink == NULL)
     {
         LOG_ERR("Failed to open pouch uplink");

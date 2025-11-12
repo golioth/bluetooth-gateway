@@ -38,6 +38,8 @@ struct pouch_gateway_uplink
     struct pouch_block *wblock;
     struct pouch_block *rblock;
     sys_slist_t queue;
+    pouch_gateway_uplink_end_cb end_cb;
+    void *end_cb_arg;
 };
 
 static struct golioth_client *client;
@@ -83,6 +85,7 @@ static void block_upload_callback(struct golioth_client *client,
     if (status != GOLIOTH_OK)
     {
         LOG_ERR("Failed to deliver block: %d", status);
+        uplink->end_cb(uplink->end_cb_arg, POUCH_GATEWAY_UPLINK_ERROR_CLOUD);
         cleanup_uplink(uplink);
         return;
     }
@@ -107,6 +110,7 @@ static void process_uplink(struct pouch_gateway_uplink *uplink)
         LOG_DBG("No blocks to process");
         if (closed)
         {
+            uplink->end_cb(uplink->end_cb_arg, POUCH_GATEWAY_UPLINK_SUCCESS);
             cleanup_uplink(uplink);
             return;
         }
@@ -145,6 +149,7 @@ static void process_uplink(struct pouch_gateway_uplink *uplink)
     if (status != GOLIOTH_OK)
     {
         LOG_ERR("Failed to deliver block: %d", status);
+        uplink->end_cb(uplink->end_cb_arg, POUCH_GATEWAY_UPLINK_ERROR_LOCAL);
         cleanup_uplink(uplink);
     }
 }
@@ -219,7 +224,9 @@ void pouch_gateway_uplink_module_init(struct golioth_client *c)
 }
 
 struct pouch_gateway_uplink *pouch_gateway_uplink_open(
-    struct pouch_gateway_downlink_context *downlink)
+    struct pouch_gateway_downlink_context *downlink,
+    pouch_gateway_uplink_end_cb end_cb,
+    void *end_cb_arg)
 {
     struct pouch_gateway_uplink *uplink = malloc(sizeof(struct pouch_gateway_uplink));
     if (uplink == NULL)
@@ -253,6 +260,8 @@ struct pouch_gateway_uplink *pouch_gateway_uplink_open(
     uplink->block_idx = 0;
     atomic_set(uplink->flags, 0);
     sys_slist_init(&uplink->queue);
+    uplink->end_cb = end_cb;
+    uplink->end_cb_arg = end_cb_arg;
 
     return uplink;
 }
