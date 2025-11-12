@@ -18,6 +18,15 @@ struct pouch_block;
 
 struct pouch_gateway_uplink;
 
+enum pouch_gateway_uplink_result
+{
+    POUCH_GATEWAY_UPLINK_SUCCESS,
+    POUCH_GATEWAY_UPLINK_ERROR_LOCAL,
+    POUCH_GATEWAY_UPLINK_ERROR_CLOUD,
+};
+
+typedef void (*pouch_gateway_uplink_end_cb)(void *arg, enum pouch_gateway_uplink_result res);
+
 /**
  * Write data to the uplink.
  *
@@ -39,7 +48,9 @@ int pouch_gateway_uplink_write(struct pouch_gateway_uplink *uplink,
  * @return Pointer to the uplink context.
  */
 struct pouch_gateway_uplink *pouch_gateway_uplink_open(
-    struct pouch_gateway_downlink_context *downlink);
+    struct pouch_gateway_downlink_context *downlink,
+    pouch_gateway_uplink_end_cb end_cb,
+    void *failed_cb_arg);
 
 /**
  * Close the uplink.
