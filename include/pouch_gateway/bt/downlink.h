@@ -6,6 +6,9 @@
 
 #pragma once
 
+struct bt_conn;
+struct pouch_gateway_downlink_context;
+
 /**
  * Start downlink for the given Bluetooth connection.
  *

@@ -6,6 +6,8 @@
 
 #pragma once
 
+struct bt_conn;
+
 /**
  * Start uplink for the given Bluetooth connection.
  *

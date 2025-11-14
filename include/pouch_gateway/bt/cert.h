@@ -6,6 +6,8 @@
 
 #pragma once
 
+struct bt_conn;
+
 /**
  * Start certificate exchange for the given Bluetooth connection.
  *
