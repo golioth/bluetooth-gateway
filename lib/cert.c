@@ -36,7 +36,7 @@ struct pouch_gateway_device_cert_context
 
 struct pouch_gateway_server_cert_context
 {
-    size_t id;
+    atomic_val_t id;
     size_t offset;
 };
 
