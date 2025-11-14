@@ -360,6 +360,7 @@ static void gateway_device_cert_read_start(struct bt_conn *conn)
     if (err)
     {
         LOG_ERR("BT read request failed: %d", err);
+        device_cert_cleanup(conn);
         pouch_gateway_bt_finished(conn);
     }
 }
